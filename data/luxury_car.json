@@ -1,0 +1,90 @@
+[
+  {
+    "id": "car_031",
+    "name": "Mercedes S-Class",
+    "category": "luxury",
+    "base_price": 90000,
+    "speed": 160,
+    "style": 90,
+    "reliability": 88,
+    "income_rate": 180,
+    "rarity_weight": 0.03
+  },
+  {
+    "id": "car_032",
+    "name": "BMW 7 Series",
+    "category": "luxury",
+    "base_price": 85000,
+    "speed": 158,
+    "style": 88,
+    "reliability": 86,
+    "income_rate": 170,
+    "rarity_weight": 0.03
+  },
+  {
+    "id": "car_033",
+    "name": "Audi A8",
+    "category": "luxury",
+    "base_price": 87000,
+    "speed": 159,
+    "style": 89,
+    "reliability": 87,
+    "income_rate": 174,
+    "rarity_weight": 0.03
+  },
+  {
+    "id": "car_034",
+    "name": "Lexus LS",
+    "category": "luxury",
+    "base_price": 88000,
+    "speed": 155,
+    "style": 87,
+    "reliability": 92,
+    "income_rate": 176,
+    "rarity_weight": 0.03
+  },
+  {
+    "id": "car_035",
+    "name": "Jaguar XJ",
+    "category": "luxury",
+    "base_price": 82000,
+    "speed": 157,
+    "style": 91,
+    "reliability": 83,
+    "income_rate": 164,
+    "rarity_weight": 0.03
+  },
+  {
+    "id": "car_036",
+    "name": "Porsche Panamera",
+    "category": "luxury",
+    "base_price": 95000,
+    "speed": 170,
+    "style": 93,
+    "reliability": 85,
+    "income_rate": 190,
+    "rarity_weight": 0.03
+  },
+  {
+    "id": "car_037",
+    "name": "Tesla Model S",
+    "category": "luxury",
+    "base_price": 92000,
+    "speed": 175,
+    "style": 92,
+    "reliability": 89,
+    "income_rate": 184,
+    "rarity_weight": 0.03
+  },
+  {
+    "id": "car_038",
+    "name": "Maserati Quattroporte",
+    "category": "luxury",
+    "base_price": 91000,
+    "speed": 168,
+    "style": 94,
+    "reliability": 82,
+    "income_rate": 182,
+    "rarity_weight": 0.03
+  }
+]

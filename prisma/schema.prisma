@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id               Int       @id @default(autoincrement())
+  username         String    @unique
+  email            String    @unique
+  password_hash    String
+  balance          Float     @default(10000)
+  garage_capacity  Int       @default(3)
+  last_income_time DateTime  @default(now())
+  last_login       DateTime?
+  last_logout      DateTime?
+  created_at       DateTime  @default(now())
+
+  cars             UserCar[]
+  bids             Bid[]
+  won_auctions     Auction[] @relation("HighestBidder")
+}
+
+model Car {
+  id           String    @id
+  name         String    @unique
+  category     String
+  base_price   Float
+  speed        Int
+  style        Int
+  reliability  Int
+  income_rate  Float
+  image_path   String
+
+  user_cars    UserCar[]
+  auctions     Auction[]
+}
+
+model Auction {
+  id                  Int      @id @default(autoincrement())
+  car_id              String
+  current_highest_bid Float
+  highest_bidder_id   Int?
+  start_time          DateTime @default(now())
+  end_time            DateTime
+  is_active           Boolean  @default(true)
+
+  car                 Car      @relation(fields: [car_id], references: [id])
+  highest_bidder      User?    @relation("HighestBidder", fields: [highest_bidder_id], references: [id])
+  bids                Bid[]
+}
+
+model UserCar {
+  id             Int      @id @default(autoincrement())
+  user_id        Int
+  car_id         String
+  acquired_at    DateTime @default(now())
+  purchase_time  DateTime @default(now())
+  purchase_price Float    @default(0)
+
+  user           User     @relation(fields: [user_id], references: [id])
+  car            Car      @relation(fields: [car_id], references: [id])
+}
+
+model Bid {
+  id         Int      @id @default(autoincrement())
+  auction_id Int
+  user_id    Int
+  amount     Float
+  created_at DateTime @default(now())
+
+  auction    Auction  @relation(fields: [auction_id], references: [id])
+  user       User     @relation(fields: [user_id], references: [id])
+}

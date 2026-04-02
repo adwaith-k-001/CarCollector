@@ -1,0 +1,57 @@
+[
+  {
+    "id": "car_046",
+    "name": "Bugatti Chiron",
+    "category": "hyper",
+    "base_price": 2000000,
+    "speed": 300,
+    "style": 100,
+    "reliability": 75,
+    "income_rate": 6000,
+    "rarity_weight": 0.01
+  },
+  {
+    "id": "car_047",
+    "name": "Lamborghini Aventador SVJ",
+    "category": "hyper",
+    "base_price": 1500000,
+    "speed": 280,
+    "style": 98,
+    "reliability": 73,
+    "income_rate": 4500,
+    "rarity_weight": 0.01
+  },
+  {
+    "id": "car_048",
+    "name": "Ferrari LaFerrari",
+    "category": "hyper",
+    "base_price": 1800000,
+    "speed": 290,
+    "style": 99,
+    "reliability": 74,
+    "income_rate": 5400,
+    "rarity_weight": 0.01
+  },
+  {
+    "id": "car_049",
+    "name": "McLaren P1",
+    "category": "hyper",
+    "base_price": 1600000,
+    "speed": 285,
+    "style": 97,
+    "reliability": 76,
+    "income_rate": 4800,
+    "rarity_weight": 0.01
+  },
+  {
+    "id": "car_050",
+    "name": "Koenigsegg Jesko",
+    "category": "hyper",
+    "base_price": 2200000,
+    "speed": 310,
+    "style": 100,
+    "reliability": 72,
+    "income_rate": 6600,
+    "rarity_weight": 0.01
+  }
+]

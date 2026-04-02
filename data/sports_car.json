@@ -1,0 +1,112 @@
+[
+  {
+    "id": "car_021",
+    "name": "BMW M3 Competition",
+    "category": "sports",
+    "base_price": 45000,
+    "speed": 180,
+    "style": 75,
+    "reliability": 82,
+    "income_rate": 90,
+    "rarity_weight": 0.05
+  },
+  {
+    "id": "car_022",
+    "name": "Audi RS5",
+    "category": "sports",
+    "base_price": 47000,
+    "speed": 185,
+    "style": 78,
+    "reliability": 80,
+    "income_rate": 94,
+    "rarity_weight": 0.05
+  },
+  {
+    "id": "car_023",
+    "name": "Ford Mustang GT",
+    "category": "sports",
+    "base_price": 42000,
+    "speed": 175,
+    "style": 80,
+    "reliability": 78,
+    "income_rate": 84,
+    "rarity_weight": 0.05
+  },
+  {
+    "id": "car_024",
+    "name": "Nissan 370Z",
+    "category": "sports",
+    "base_price": 40000,
+    "speed": 170,
+    "style": 72,
+    "reliability": 79,
+    "income_rate": 80,
+    "rarity_weight": 0.05
+  },
+  {
+    "id": "car_025",
+    "name": "Subaru BRZ",
+    "category": "sports",
+    "base_price": 38000,
+    "speed": 165,
+    "style": 70,
+    "reliability": 83,
+    "income_rate": 76,
+    "rarity_weight": 0.05
+  },
+  {
+    "id": "car_026",
+    "name": "Mazda MX-5 Miata",
+    "category": "sports",
+    "base_price": 36000,
+    "speed": 160,
+    "style": 74,
+    "reliability": 85,
+    "income_rate": 72,
+    "rarity_weight": 0.05
+  },
+  {
+    "id": "car_027",
+    "name": "Toyota GR Supra",
+    "category": "sports",
+    "base_price": 48000,
+    "speed": 190,
+    "style": 85,
+    "reliability": 81,
+    "income_rate": 96,
+    "rarity_weight": 0.05
+  },
+  {
+    "id": "car_028",
+    "name": "Chevrolet Camaro SS",
+    "category": "sports",
+    "base_price": 43000,
+    "speed": 178,
+    "style": 77,
+    "reliability": 79,
+    "income_rate": 86,
+    "rarity_weight": 0.05
+  },
+  {
+    "id": "car_029",
+    "name": "Volkswagen Golf GTI",
+    "category": "sports",
+    "base_price": 35000,
+    "speed": 158,
+    "style": 69,
+    "reliability": 86,
+    "income_rate": 70,
+    "rarity_weight": 0.05
+  },
+  {
+    "id": "car_030",
+    "name": "Hyundai i30 N",
+    "category": "sports",
+    "base_price": 34000,
+    "speed": 155,
+    "style": 68,
+    "reliability": 84,
+    "income_rate": 68,
+    "rarity_weight": 0.05
+  }
+]

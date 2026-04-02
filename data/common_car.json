@@ -1,0 +1,222 @@
+[
+  {
+    "id": "car_001",
+    "name": "Toyota Corolla",
+    "category": "common",
+    "base_price": 6000,
+    "speed": 120,
+    "style": 45,
+    "reliability": 90,
+    "income_rate": 6,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_002",
+    "name": "Honda Civic",
+    "category": "common",
+    "base_price": 6500,
+    "speed": 125,
+    "style": 50,
+    "reliability": 88,
+    "income_rate": 6.5,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_003",
+    "name": "Hyundai i20",
+    "category": "common",
+    "base_price": 5000,
+    "speed": 110,
+    "style": 42,
+    "reliability": 85,
+    "income_rate": 5,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_004",
+    "name": "Maruti Suzuki Swift",
+    "category": "common",
+    "base_price": 4800,
+    "speed": 105,
+    "style": 40,
+    "reliability": 87,
+    "income_rate": 4.8,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_005",
+    "name": "Volkswagen Polo",
+    "category": "common",
+    "base_price": 5200,
+    "speed": 115,
+    "style": 47,
+    "reliability": 84,
+    "income_rate": 5.2,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_006",
+    "name": "Ford Fiesta",
+    "category": "common",
+    "base_price": 5100,
+    "speed": 112,
+    "style": 43,
+    "reliability": 83,
+    "income_rate": 5.1,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_007",
+    "name": "Nissan Micra",
+    "category": "common",
+    "base_price": 4500,
+    "speed": 100,
+    "style": 38,
+    "reliability": 82,
+    "income_rate": 4.5,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_008",
+    "name": "Kia Rio",
+    "category": "common",
+    "base_price": 5300,
+    "speed": 113,
+    "style": 44,
+    "reliability": 86,
+    "income_rate": 5.3,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_009",
+    "name": "Chevrolet Cruze",
+    "category": "common",
+    "base_price": 5800,
+    "speed": 118,
+    "style": 48,
+    "reliability": 80,
+    "income_rate": 5.8,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_010",
+    "name": "Skoda Rapid",
+    "category": "common",
+    "base_price": 5600,
+    "speed": 117,
+    "style": 46,
+    "reliability": 85,
+    "income_rate": 5.6,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_011",
+    "name": "Renault Kwid",
+    "category": "common",
+    "base_price": 4000,
+    "speed": 95,
+    "style": 35,
+    "reliability": 81,
+    "income_rate": 4,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_012",
+    "name": "Tata Altroz",
+    "category": "common",
+    "base_price": 5500,
+    "speed": 110,
+    "style": 45,
+    "reliability": 88,
+    "income_rate": 5.5,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_013",
+    "name": "Honda Amaze",
+    "category": "common",
+    "base_price": 5200,
+    "speed": 108,
+    "style": 42,
+    "reliability": 87,
+    "income_rate": 5.2,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_014",
+    "name": "Toyota Etios",
+    "category": "common",
+    "base_price": 5000,
+    "speed": 107,
+    "style": 40,
+    "reliability": 89,
+    "income_rate": 5,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_015",
+    "name": "Hyundai Verna",
+    "category": "common",
+    "base_price": 6000,
+    "speed": 120,
+    "style": 50,
+    "reliability": 86,
+    "income_rate": 6,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_016",
+    "name": "Maruti Baleno",
+    "category": "common",
+    "base_price": 5400,
+    "speed": 112,
+    "style": 44,
+    "reliability": 88,
+    "income_rate": 5.4,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_017",
+    "name": "Ford Aspire",
+    "category": "common",
+    "base_price": 5100,
+    "speed": 110,
+    "style": 41,
+    "reliability": 84,
+    "income_rate": 5.1,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_018",
+    "name": "Nissan Sunny",
+    "category": "common",
+    "base_price": 5300,
+    "speed": 109,
+    "style": 43,
+    "reliability": 83,
+    "income_rate": 5.3,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_019",
+    "name": "Kia Sonet",
+    "category": "common",
+    "base_price": 5800,
+    "speed": 115,
+    "style": 48,
+    "reliability": 85,
+    "income_rate": 5.8,
+    "rarity_weight": 0.08
+  },
+  {
+    "id": "car_020",
+    "name": "Tata Punch",
+    "category": "common",
+    "base_price": 4900,
+    "speed": 102,
+    "style": 39,
+    "reliability": 87,
+    "income_rate": 4.9,
+    "rarity_weight": 0.08
+  }
+]
