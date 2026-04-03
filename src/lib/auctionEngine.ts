@@ -4,32 +4,40 @@ import { getAllQuantities } from './quantityData'
 const AUCTION_DURATION_MS = 60 * 1000 // 60 seconds
 const INCOME_INTERVAL_MS = 60 * 1000  // 60 seconds
 
-// Simple in-memory lock to prevent concurrent auction advancement
-let advancing = false
-
 export async function advanceAuctionState(): Promise<void> {
-  if (advancing) return
-  advancing = true
-
-  try {
-    await _advanceAuction()
-    await _generateIncome()
-  } finally {
-    advancing = false
-  }
+  await _advanceAuction()
+  await _generateIncome()
 }
 
 async function _advanceAuction(): Promise<void> {
   const now = new Date()
 
-  const activeAuction = await prisma.auction.findFirst({
+  // Fetch ALL active auctions ordered newest-first.
+  // On Vercel serverless the in-memory lock is per-process and useless, so
+  // concurrent requests can each call _startNewAuction(), creating phantom
+  // is_active=true rows. We fix that by keeping only the newest and
+  // deactivating the rest on every request (self-healing cleanup).
+  const activeAuctions = await prisma.auction.findMany({
     where: { is_active: true },
+    orderBy: { start_time: 'desc' },
   })
 
-  if (!activeAuction) {
+  if (activeAuctions.length === 0) {
     await _startNewAuction()
     return
   }
+
+  // Deactivate all phantom duplicates (all but the newest)
+  if (activeAuctions.length > 1) {
+    const phantomIds = activeAuctions.slice(1).map((a) => a.id)
+    await prisma.auction.updateMany({
+      where: { id: { in: phantomIds } },
+      data: { is_active: false },
+    })
+    console.log(`[auctionEngine] Cleaned up ${phantomIds.length} phantom auction(s)`)
+  }
+
+  const activeAuction = activeAuctions[0]
 
   if (activeAuction.end_time > now) {
     // Auction still running
@@ -95,6 +103,11 @@ async function _advanceAuction(): Promise<void> {
 }
 
 async function _startNewAuction(): Promise<void> {
+  // Guard: if a concurrent serverless invocation already created an auction,
+  // do nothing. This closes the TOCTOU window that causes phantom auctions.
+  const existing = await prisma.auction.findFirst({ where: { is_active: true } })
+  if (existing) return
+
   const allCars = await prisma.car.findMany({
     select: { id: true, name: true, base_price: true },
   })
