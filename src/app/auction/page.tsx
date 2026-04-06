@@ -35,8 +35,6 @@ interface AuctionData {
   variant_income_mult: number
   variant_decay_mult: number
   variant_resale_bonus: number
-  my_variant_count: number
-  variant_cap: number
   current_highest_bid: number
   highest_bidder: string | null
   is_you_winning: boolean
@@ -347,7 +345,6 @@ export default function AuctionPage() {
                 {/* Variant badge — hidden for common cars */}
                 {auction.car.category !== 'common' && (() => {
                   const vc = VARIANT_CONFIG[auction.variant] ?? VARIANT_CONFIG.clean
-                  const atCap = auction.my_variant_count >= auction.variant_cap
                   return (
                     <div className={`flex flex-wrap items-center gap-2 mb-3 p-2.5 rounded-xl border ${vc.bg} ${vc.border}`}>
                       <span className={`font-bold text-sm ${vc.color}`}>{auction.variant_label}</span>
@@ -362,11 +359,6 @@ export default function AuctionPage() {
                             {auction.variant_resale_bonus > 0 ? '+' : ''}{Math.round(auction.variant_resale_bonus * 100)}% resale
                           </span>
                         </>
-                      )}
-                      {atCap && (
-                        <span className="ml-auto text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/30 rounded-full px-2 py-0.5">
-                          Variant cap reached ({auction.my_variant_count}/{auction.variant_cap})
-                        </span>
                       )}
                     </div>
                   )

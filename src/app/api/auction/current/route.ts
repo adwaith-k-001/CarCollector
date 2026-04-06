@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
 import { advanceAuctionState } from '@/lib/auctionEngine'
 import { getMaxQuantity } from '@/lib/quantityData'
-import { getVariant, MAX_SAME_VARIANT, getCarImagePath } from '@/lib/variantData'
+import { getVariant, getCarImagePath } from '@/lib/variantData'
 
 export async function GET(req: NextRequest) {
   const user = getAuthUser(req)
@@ -39,10 +39,7 @@ export async function GET(req: NextRequest) {
     const maxQuantity   = getMaxQuantity(auction.car.name)
 
     // Variant info
-    const variantConf     = getVariant(auction.variant)
-    const myVariantCount  = await prisma.userCar.count({
-      where: { user_id: user.userId, variant: auction.variant },
-    })
+    const variantConf = getVariant(auction.variant)
 
     // Skip vote info — threshold based on online players (active in last 30s)
     const onlineWindow = new Date(Date.now() - 30 * 1000)
@@ -85,8 +82,6 @@ export async function GET(req: NextRequest) {
         variant_income_mult: variantConf.income_multiplier,
         variant_decay_mult:  variantConf.decay_multiplier,
         variant_resale_bonus: variantConf.resale_bonus,
-        my_variant_count:    myVariantCount,
-        variant_cap:         MAX_SAME_VARIANT,
         current_highest_bid: auction.current_highest_bid,
         highest_bidder:      auction.highest_bidder?.username ?? null,
         is_you_winning:      auction.highest_bidder_id === user.userId,
