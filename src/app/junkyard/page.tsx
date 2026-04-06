@@ -139,6 +139,7 @@ export default function JunkyardPage() {
                 { href: '/garage',      label: 'Garage'      },
                 { href: '/leaderboard', label: 'Leaderboard' },
                 { href: '/junkyard',    label: 'Junkyard'    },
+                { href: '/trade',       label: 'Trade'       },
               ].map(({ href, label }) => (
                 <Link
                   key={href}

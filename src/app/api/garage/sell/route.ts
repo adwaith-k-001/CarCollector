@@ -54,6 +54,10 @@ export async function POST(req: NextRequest) {
     if (cond <= MIN_VALUE_RATIO) {
       // ── Car is at floor — junk it ──────────────────────────────────────────
       await prisma.$transaction([
+        prisma.tradeOffer.updateMany({
+          where: { instance_key: instanceKey, status: 'pending' },
+          data:  { status: 'expired' },
+        }),
         prisma.userCar.delete({ where: { id: userCarId } }),
         prisma.junkyardCar.create({
           data: {
@@ -91,6 +95,10 @@ export async function POST(req: NextRequest) {
 
     // ── Normal sell — return car to resale pool ────────────────────────────
     await prisma.$transaction([
+      prisma.tradeOffer.updateMany({
+        where: { instance_key: instanceKey, status: 'pending' },
+        data:  { status: 'expired' },
+      }),
       prisma.userCar.delete({ where: { id: userCarId } }),
       prisma.availableCarInstance.create({
         data: {

@@ -26,6 +26,8 @@ model User {
   won_auctions     Auction[]        @relation("HighestBidder")
   skip_votes       AuctionSkipVote[]
   car_history      CarHistoryEntry[]
+  trade_offers_sent     TradeOffer[] @relation("TradeOffersFrom")
+  trade_offers_received TradeOffer[] @relation("TradeOffersTo")
 }
 
 model Car {
@@ -44,6 +46,7 @@ model Car {
   available_instances AvailableCarInstance[]
   junkyard_cars       JunkyardCar[]
   history_entries     CarHistoryEntry[]
+  trade_offers        TradeOffer[]
 }
 
 model Auction {
@@ -133,6 +136,24 @@ model Bid {
 
   auction Auction @relation(fields: [auction_id], references: [id])
   user    User    @relation(fields: [user_id], references: [id])
+}
+
+// P2P trade offers between players
+model TradeOffer {
+  id           Int      @id @default(autoincrement())
+  from_user_id Int
+  to_user_id   Int
+  instance_key String   // plain string — no FK, survives ownership transfer
+  car_id       String
+  offer_price  Float
+  status       String   @default("pending") // "pending" | "accepted" | "rejected" | "expired"
+  is_counter   Boolean  @default(false)     // false = to_user acts; true = from_user acts
+  created_at   DateTime @default(now())
+  expires_at   DateTime
+
+  from_user  User @relation("TradeOffersFrom", fields: [from_user_id], references: [id])
+  to_user    User @relation("TradeOffersTo",   fields: [to_user_id],   references: [id])
+  car        Car  @relation(fields: [car_id], references: [id])
 }
 
 model AuctionSkipVote {

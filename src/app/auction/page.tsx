@@ -278,6 +278,9 @@ export default function AuctionPage() {
               <Link href="/junkyard" className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">
                 Junkyard
               </Link>
+              <Link href="/trade" className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">
+                Trade
+              </Link>
             </div>
           </div>
           <div className="flex items-center gap-4">

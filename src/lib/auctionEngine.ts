@@ -99,6 +99,10 @@ async function _junkDegradedCars(): Promise<void> {
     const scrapValue  = Math.round(uc.car.base_price * MIN_VALUE_RATIO)
 
     await prisma.$transaction([
+      prisma.tradeOffer.updateMany({
+        where: { instance_key: instanceKey, status: 'pending' },
+        data:  { status: 'expired' },
+      }),
       prisma.userCar.delete({ where: { id: uc.id } }),
       prisma.junkyardCar.create({
         data: {
