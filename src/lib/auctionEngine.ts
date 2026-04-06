@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
 import { getAllQuantities } from './quantityData'
-import { currentCondition, MIN_VALUE_RATIO } from './depreciation'
+import { currentCondition, MIN_VALUE_RATIO, tuneIncomeMultiplier } from './depreciation'
 
 const AUCTION_DURATION_MS  = 60 * 1000
 const INCOME_INTERVAL_MS   = 60 * 1000
@@ -220,6 +220,7 @@ async function _advanceAuction(): Promise<void> {
               purchase_time:  now,
               purchase_price: bidAmount,
               condition:      freshAuction.start_condition,
+              tune_stage:     freshAuction.tune_stage,
             },
           }),
           prisma.carHistoryEntry.create({
@@ -275,6 +276,7 @@ async function _startNewAuction(): Promise<void> {
               car_id:              pick.car_id,
               instance_key:        pick.instance_key,
               start_condition:     pick.condition,
+              tune_stage:          pick.tune_stage,
               current_highest_bid: startBid,
               start_time:          startTime,
               end_time:            endTime,
@@ -356,7 +358,10 @@ async function _generateIncome(): Promise<void> {
     const cycles  = Math.floor(elapsed / INCOME_INTERVAL_MS)
     if (cycles === 0) continue
 
-    const incomePerCycle  = user.cars.reduce((sum, uc) => sum + uc.car.income_rate, 0)
+    const incomePerCycle  = user.cars.reduce(
+      (sum, uc) => sum + uc.car.income_rate * tuneIncomeMultiplier(uc.tune_stage),
+      0
+    )
     const totalIncome     = incomePerCycle * cycles
     const newLastIncome   = new Date(user.last_income_time.getTime() + cycles * INCOME_INTERVAL_MS)
 

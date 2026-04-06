@@ -19,15 +19,45 @@ export function currentCondition(storedCondition: number, purchaseTime: Date): n
   return Math.max(MIN_VALUE_RATIO, decayed)
 }
 
+// ─── Tuning ──────────────────────────────────────────────────────────────────
+
+/** Cost per stage as a fraction of base_price: Stage1=10%, Stage2=15%, Stage3=20% */
+const TUNE_COST_FRACTIONS = [0, 0.10, 0.15, 0.20]
+
+/** Total tune cost invested up to `stage` as a fraction of base_price. */
+export function totalTuneCostFraction(stage: number): number {
+  let total = 0
+  for (let i = 1; i <= Math.min(stage, 3); i++) total += TUNE_COST_FRACTIONS[i]
+  return total
+}
+
+/** Dollar cost of the next tune stage, or null if already Stage 3. */
+export function nextTuneCost(basePrice: number, currentStage: number): number | null {
+  if (currentStage >= 3) return null
+  return Math.round(basePrice * TUNE_COST_FRACTIONS[currentStage + 1])
+}
+
 /**
- * Sell value = car's catalogue base_price × current effective condition.
+ * Income multiplier for a given tune stage.
+ * Stage 1 = +10%, Stage 2 = +25%, Stage 3 = +45% (additive stack).
+ */
+export function tuneIncomeMultiplier(stage: number): number {
+  return 1 + totalTuneCostFraction(stage)
+}
+
+/**
+ * Sell value = base_price × condition + 75% of total tune cost invested.
  */
 export function calculateSellValue(
   basePrice: number,
   purchaseTime: Date,
-  storedCondition: number = 1.0
+  storedCondition: number = 1.0,
+  tuneStage: number = 0
 ): number {
-  return Math.round(basePrice * currentCondition(storedCondition, purchaseTime))
+  const cond = currentCondition(storedCondition, purchaseTime)
+  const condValue = Math.round(basePrice * cond)
+  const tuneResidual = Math.round(basePrice * totalTuneCostFraction(tuneStage) * 0.75)
+  return condValue + tuneResidual
 }
 
 /** Upgrade costs to reach each slot count (4–10). */

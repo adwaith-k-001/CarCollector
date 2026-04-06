@@ -24,6 +24,9 @@ interface OwnedCar {
   sell_value: number
   globally_owned: number
   max_quantity: number | null
+  tune_stage: number
+  next_tune_cost: number | null
+  effective_income_rate: number
 }
 
 interface GarageData {
@@ -83,6 +86,8 @@ export default function GaragePage() {
   const [upgrading, setUpgrading] = useState(false)
   const [upgradeMessage, setUpgradeMessage] = useState<{ text: string; ok: boolean } | null>(null)
   const [sellCooldown, setSellCooldown] = useState(0) // seconds remaining
+  const [tuningId, setTuningId] = useState<number | null>(null)
+  const [tuneMessage, setTuneMessage] = useState<{ text: string; ok: boolean } | null>(null)
 
   const getToken = useCallback(() => localStorage.getItem('token'), [])
 
@@ -200,6 +205,36 @@ export default function GaragePage() {
     }
   }
 
+  async function handleTune(userCarId: number, carName: string) {
+    setTuneMessage(null)
+    setTuningId(userCarId)
+    try {
+      const res = await fetch('/api/garage/tune', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({ userCarId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setTuneMessage({ text: data.error || 'Tune failed', ok: false })
+      } else {
+        setTuneMessage({
+          text: `${carName} upgraded to Stage ${data.new_stage}! Cost: $${data.cost_paid.toLocaleString()}`,
+          ok: true,
+        })
+        fetchGarage()
+      }
+    } catch {
+      setTuneMessage({ text: 'Network error. Try again.', ok: false })
+    } finally {
+      setTuningId(null)
+      setTimeout(() => setTuneMessage(null), 4000)
+    }
+  }
+
   async function handleLogout() {
     await callLogoutAPI()
     clearAuthStorage()
@@ -275,6 +310,15 @@ export default function GaragePage() {
               : 'bg-red-500/10 border-red-500/30 text-red-400'
           }`}>
             {upgradeMessage.text}
+          </div>
+        )}
+        {tuneMessage && (
+          <div className={`mb-4 rounded-xl px-4 py-3 text-sm font-medium border ${
+            tuneMessage.ok
+              ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+              : 'bg-red-500/10 border-red-500/30 text-red-400'
+          }`}>
+            {tuneMessage.text}
           </div>
         )}
 
@@ -426,19 +470,44 @@ export default function GaragePage() {
                         )
                       })()}
 
+                      {/* Tune stage badge */}
+                      {car.tune_stage > 0 && (
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <span className="text-xs font-bold text-blue-400 bg-blue-500/10 border border-blue-500/30 rounded-full px-2 py-0.5">
+                            Stage {car.tune_stage}
+                          </span>
+                          <span className="text-[10px] text-gray-500">
+                            +{[0, 10, 25, 45][car.tune_stage]}% income boost
+                          </span>
+                        </div>
+                      )}
+
                       {/* Income */}
                       <div className="flex items-center justify-between bg-green-500/10 border border-green-500/20 rounded-xl px-3 py-2 mb-2">
                         <span className="text-xs text-gray-400">Income</span>
                         <span className="text-green-400 font-bold text-sm">
-                          +${car.income_rate.toLocaleString()}/min
+                          +${car.effective_income_rate.toLocaleString(undefined, { maximumFractionDigits: 1 })}/min
                         </span>
                       </div>
+
+                      {/* Tune button */}
+                      {car.tune_stage < 3 && (
+                        <button
+                          onClick={() => handleTune(car.usercar_id, car.name)}
+                          disabled={tuningId === car.usercar_id || !car.next_tune_cost || balance < (car.next_tune_cost ?? 0)}
+                          className="w-full bg-blue-500/10 hover:bg-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed border border-blue-500/30 hover:border-blue-500/50 text-blue-400 text-xs font-semibold py-2 rounded-lg transition-all mb-2"
+                        >
+                          {tuningId === car.usercar_id
+                            ? 'Tuning...'
+                            : `Tune to Stage ${car.tune_stage + 1} — $${(car.next_tune_cost ?? 0).toLocaleString()}`}
+                        </button>
+                      )}
 
                       {/* Sell value */}
                       <div className="flex items-center justify-between bg-amber-500/5 border border-amber-500/20 rounded-xl px-3 py-2 mb-3">
                         <div>
                           <span className="text-xs text-gray-400">Sell Value</span>
-                          <div className="text-[10px] text-gray-600">Decreases over time</div>
+                          <div className="text-[10px] text-gray-600">Depreciation + tune residual</div>
                         </div>
                         <span className="text-amber-400 font-bold text-sm">
                           ${car.sell_value.toLocaleString()}

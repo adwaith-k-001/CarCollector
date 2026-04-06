@@ -29,6 +29,7 @@ interface AuctionData {
   car: Car
   is_used: boolean
   start_condition: number
+  tune_stage: number
   current_highest_bid: number
   highest_bidder: string | null
   is_you_winning: boolean
@@ -361,6 +362,13 @@ export default function AuctionPage() {
                     ${auction.car.income_rate.toLocaleString()}<span className="text-gray-500 font-normal">/min</span>
                   </span>
                 </div>
+
+                {auction.tune_stage > 0 && (
+                  <div className="mt-2 flex items-center gap-2 bg-blue-500/5 border border-blue-500/20 rounded-xl px-4 py-3">
+                    <span className="text-blue-400 font-bold text-sm">Stage {auction.tune_stage}</span>
+                    <span className="text-gray-400 text-xs">tune — +{[0, 10, 25, 45][auction.tune_stage]}% income boost</span>
+                  </div>
+                )}
 
                 {/* Car history (used cars only) */}
                 {auction.is_used && auction.car_history.length > 0 && (

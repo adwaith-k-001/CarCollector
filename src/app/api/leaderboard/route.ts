@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
-import { calculateSellValue, totalGarageUpgradeCost } from '@/lib/depreciation'
+import { calculateSellValue, totalGarageUpgradeCost, tuneIncomeMultiplier } from '@/lib/depreciation'
 
 export async function GET(req: NextRequest) {
   const user = getAuthUser(req)
@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
           select: {
             purchase_time: true,
             condition: true,
+            tune_stage: true,
             car: {
               select: {
                 name: true,
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
     const leaderboard = users
       .map((u) => {
         const carValue = u.cars.reduce((sum, uc) => {
-          return sum + calculateSellValue(uc.car.base_price, uc.purchase_time, uc.condition)
+          return sum + calculateSellValue(uc.car.base_price, uc.purchase_time, uc.condition, uc.tune_stage)
         }, 0)
 
         const garageValue = totalGarageUpgradeCost(u.garage_capacity)
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
           net_worth: netWorth,
           garage_capacity: u.garage_capacity,
           car_count: u.cars.length,
-          total_income_rate: u.cars.reduce((sum, uc) => sum + uc.car.income_rate, 0),
+          total_income_rate: u.cars.reduce((sum, uc) => sum + uc.car.income_rate * tuneIncomeMultiplier(uc.tune_stage), 0),
           cars: u.cars.map((uc) => ({ name: uc.car.name, category: uc.car.category })),
         }
       })

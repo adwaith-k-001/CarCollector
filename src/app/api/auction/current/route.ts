@@ -69,6 +69,7 @@ export async function GET(req: NextRequest) {
         car:                 auction.car,
         is_used:             auction.instance_key !== null,
         start_condition:     auction.start_condition,
+        tune_stage:          auction.tune_stage,
         current_highest_bid: auction.current_highest_bid,
         highest_bidder:      auction.highest_bidder?.username ?? null,
         is_you_winning:      auction.highest_bidder_id === user.userId,

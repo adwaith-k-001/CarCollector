@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
 import { advanceAuctionState } from '@/lib/auctionEngine'
-import { calculateSellValue, currentCondition, nextUpgradeCost, MAX_GARAGE_CAPACITY } from '@/lib/depreciation'
+import { calculateSellValue, currentCondition, nextUpgradeCost, MAX_GARAGE_CAPACITY, nextTuneCost, tuneIncomeMultiplier } from '@/lib/depreciation'
 import { getMaxQuantity } from '@/lib/quantityData'
 
 const SELL_COOLDOWN_MS = 15 * 60 * 1000
@@ -36,7 +36,10 @@ export async function GET(req: NextRequest) {
       ? Math.max(0, Math.ceil((dbUser.last_sell_time.getTime() + SELL_COOLDOWN_MS - now) / 1000))
       : 0
 
-    const totalIncomeRate = dbUser.cars.reduce((sum, uc) => sum + uc.car.income_rate, 0)
+    const totalIncomeRate = dbUser.cars.reduce(
+      (sum, uc) => sum + uc.car.income_rate * tuneIncomeMultiplier(uc.tune_stage),
+      0
+    )
 
     const uniqueCarIds = Array.from(new Set(dbUser.cars.map((uc) => uc.car_id)))
     const globalCounts = await prisma.userCar.groupBy({
@@ -58,22 +61,27 @@ export async function GET(req: NextRequest) {
       sell_cooldown_remaining_secs: sellCooldownRemainingSecs,
       cars: dbUser.cars.map((uc) => {
         const cond = currentCondition(uc.condition, uc.purchase_time)
-        const sellValue = calculateSellValue(uc.car.base_price, uc.purchase_time, uc.condition)
+        const sellValue = calculateSellValue(uc.car.base_price, uc.purchase_time, uc.condition, uc.tune_stage)
         const globallyOwned = globalCountMap.get(uc.car_id) ?? 1
         const maxQuantity = getMaxQuantity(uc.car.name)
+        const effectiveIncomeRate = uc.car.income_rate * tuneIncomeMultiplier(uc.tune_stage)
+        const tuneCost = nextTuneCost(uc.car.base_price, uc.tune_stage)
 
         return {
-          usercar_id:       uc.id,
-          instance_key:     uc.instance_key,
+          usercar_id:            uc.id,
+          instance_key:          uc.instance_key,
           ...uc.car,
-          acquired_at:      uc.acquired_at,
-          purchase_time:    uc.purchase_time,
-          purchase_price:   uc.purchase_price,
-          condition:        uc.condition,         // stored condition at acquisition
-          current_condition: cond,                // live effective condition
-          sell_value:       sellValue,
-          globally_owned:   globallyOwned,
-          max_quantity:     maxQuantity,
+          acquired_at:           uc.acquired_at,
+          purchase_time:         uc.purchase_time,
+          purchase_price:        uc.purchase_price,
+          condition:             uc.condition,
+          current_condition:     cond,
+          sell_value:            sellValue,
+          globally_owned:        globallyOwned,
+          max_quantity:          maxQuantity,
+          tune_stage:            uc.tune_stage,
+          next_tune_cost:        tuneCost,
+          effective_income_rate: effectiveIncomeRate,
         }
       }),
     })

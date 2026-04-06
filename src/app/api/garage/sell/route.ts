@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     if (userCar.user_id !== user.userId) return NextResponse.json({ error: 'Not your car' }, { status: 403 })
 
     const cond        = currentCondition(userCar.condition, userCar.purchase_time)
-    const sellValue   = calculateSellValue(userCar.car.base_price, userCar.purchase_time, userCar.condition)
+    const sellValue   = calculateSellValue(userCar.car.base_price, userCar.purchase_time, userCar.condition, userCar.tune_stage)
     const instanceKey = userCar.instance_key ?? randomUUID()
 
     if (cond <= MIN_VALUE_RATIO) {
@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
           instance_key: instanceKey,
           car_id:       userCar.car_id,
           condition:    cond,
+          tune_stage:   userCar.tune_stage,
         },
       }),
       prisma.carHistoryEntry.create({
