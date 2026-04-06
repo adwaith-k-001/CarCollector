@@ -28,6 +28,7 @@ interface AuctionData {
   supply_max: number | null
   skip_votes: number
   skip_threshold: number
+  online_users: number
   you_voted_skip: boolean
 }
 
@@ -88,7 +89,6 @@ export default function AuctionPage() {
   const [garageCapacity, setGarageCapacity] = useState(3)
   const [username, setUsername] = useState('')
   const [timeLeft, setTimeLeft] = useState(0)
-  const [bidAmount, setBidAmount] = useState('')
   const [bidError, setBidError] = useState('')
   const [bidSuccess, setBidSuccess] = useState('')
   const [loading, setLoading] = useState(true)
@@ -126,9 +126,8 @@ export default function AuctionPage() {
       setBalance(data.user_balance)
       setGarageCapacity(data.garage_capacity ?? 3)
 
-      // New auction started — clear bid form
+      // New auction started — clear bid messages
       if (prevAuctionId.current !== null && prevAuctionId.current !== data.auction.id) {
-        setBidAmount('')
         setBidError('')
         setBidSuccess('')
       }
@@ -171,17 +170,9 @@ export default function AuctionPage() {
     return () => clearInterval(interval)
   }, [auction?.end_time])
 
-  async function handleBid(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleBid(percent: number) {
     setBidError('')
     setBidSuccess('')
-
-    const amount = parseFloat(bidAmount)
-    if (isNaN(amount) || amount <= 0) {
-      setBidError('Enter a valid bid amount')
-      return
-    }
-
     setBidding(true)
     try {
       const res = await fetch('/api/auction/bid', {
@@ -190,7 +181,7 @@ export default function AuctionPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${getToken()}`,
         },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ percent }),
       })
 
       const data = await res.json()
@@ -200,8 +191,7 @@ export default function AuctionPage() {
         return
       }
 
-      setBidSuccess(`Bid of $${amount.toLocaleString()} placed!`)
-      setBidAmount('')
+      setBidSuccess(`Bid of $${data.new_highest_bid.toLocaleString()} placed!`)
       fetchAuction()
     } catch {
       setBidError('Network error. Try again.')
@@ -244,7 +234,6 @@ export default function AuctionPage() {
   }
 
   const cat = auction ? (CATEGORY_CONFIG[auction.car.category] ?? CATEGORY_CONFIG.common) : null
-  const minBid = auction ? auction.current_highest_bid + 1 : 0
 
   return (
     <div className="min-h-screen bg-[#0a0a14]">
@@ -366,50 +355,53 @@ export default function AuctionPage() {
                 )}
               </div>
 
-              {/* Bid Form */}
+              {/* Bid Panel */}
               <div className="bg-[#12121e] border border-[#2a2a3e] rounded-2xl p-6">
-                <h3 className="text-white font-semibold mb-4">Place Your Bid</h3>
+                <h3 className="text-white font-semibold mb-1">Place Your Bid</h3>
+                <p className="text-xs text-gray-500 mb-4">
+                  {auction.highest_bidder === null
+                    ? 'Be the first to bid on this car'
+                    : 'Choose how much to raise the current bid'}
+                </p>
 
-                <form onSubmit={handleBid} className="space-y-3">
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">
-                      Minimum: ${(minBid).toLocaleString()}
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
-                      <input
-                        type="number"
-                        value={bidAmount}
-                        onChange={(e) => {
-                          setBidAmount(e.target.value)
-                          setBidError('')
-                          setBidSuccess('')
-                        }}
-                        placeholder={minBid.toString()}
-                        min={minBid}
-                        step="1"
-                        className="w-full bg-[#0a0a14] border border-[#2a2a3e] rounded-xl pl-8 pr-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors"
-                      />
+                <div className="space-y-3">
+                  {auction.highest_bidder === null ? (
+                    /* First bid */
+                    <button
+                      onClick={() => handleBid(0)}
+                      disabled={bidding || timeLeft === 0}
+                      className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/40 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-colors"
+                    >
+                      <div className="text-lg">Place First Bid</div>
+                      <div className="text-sm font-normal opacity-80">
+                        ${(Math.floor(auction.current_highest_bid) + 1).toLocaleString()}
+                      </div>
+                    </button>
+                  ) : (
+                    /* Percentage bids */
+                    <div className="grid grid-cols-3 gap-3">
+                      {[5, 10, 20].map((pct) => {
+                        const amount = Math.ceil(auction.current_highest_bid * (1 + pct / 100))
+                        const canAfford = balance >= amount
+                        return (
+                          <button
+                            key={pct}
+                            onClick={() => handleBid(pct)}
+                            disabled={bidding || timeLeft === 0 || !canAfford}
+                            className="bg-[#0a0a14] hover:bg-orange-500/10 disabled:opacity-40 disabled:cursor-not-allowed border border-[#2a2a3e] hover:border-orange-500/60 rounded-xl py-4 transition-all text-center"
+                          >
+                            <div className="text-orange-400 font-bold text-base">+{pct}%</div>
+                            <div className="text-white font-semibold text-sm mt-0.5">
+                              ${amount.toLocaleString()}
+                            </div>
+                            {!canAfford && (
+                              <div className="text-red-400 text-[10px] mt-0.5">Can&apos;t afford</div>
+                            )}
+                          </button>
+                        )
+                      })}
                     </div>
-                  </div>
-
-                  {/* Quick bid buttons */}
-                  <div className="grid grid-cols-3 gap-2">
-                    {[1.1, 1.25, 1.5].map((mult) => {
-                      const quickBid = Math.ceil(auction.current_highest_bid * mult)
-                      return (
-                        <button
-                          key={mult}
-                          type="button"
-                          onClick={() => setBidAmount(quickBid.toString())}
-                          className="bg-[#0a0a14] hover:bg-[#1a1a2e] border border-[#2a2a3e] hover:border-orange-500/50 rounded-lg py-2 text-xs text-gray-400 hover:text-orange-400 transition-all"
-                        >
-                          +{Math.round((mult - 1) * 100)}%
-                          <div className="text-white font-medium">${quickBid.toLocaleString()}</div>
-                        </button>
-                      )
-                    })}
-                  </div>
+                  )}
 
                   {bidError && (
                     <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 text-red-400 text-sm">
@@ -421,15 +413,7 @@ export default function AuctionPage() {
                       {bidSuccess}
                     </div>
                   )}
-
-                  <button
-                    type="submit"
-                    disabled={bidding || timeLeft === 0}
-                    className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/40 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-colors text-lg"
-                  >
-                    {bidding ? 'Placing Bid...' : timeLeft === 0 ? 'Auction Ended' : 'Place Bid'}
-                  </button>
-                </form>
+                </div>
               </div>
 
               {/* Your Balance + Garage Slots */}
@@ -468,7 +452,7 @@ export default function AuctionPage() {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-gray-500">Not interested in this car?</span>
                     <span className="text-xs text-gray-500">
-                      {auction.skip_votes} / {auction.skip_threshold} votes to skip
+                      {auction.skip_votes} / {auction.skip_threshold} online ({auction.online_users}) voted to skip
                     </span>
                   </div>
                   {/* Vote progress bar */}

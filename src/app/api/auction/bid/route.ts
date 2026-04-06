@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
 import { advanceAuctionState } from '@/lib/auctionEngine'
 
+const VALID_PERCENTS = [0, 5, 10, 20] // 0 = first bid
+
 export async function POST(req: NextRequest) {
   const user = getAuthUser(req)
   if (!user) {
@@ -11,10 +13,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const amount = Number(body.amount)
+    const percent = Number(body.percent)
 
-    if (!amount || isNaN(amount) || amount <= 0) {
-      return NextResponse.json({ error: 'Invalid bid amount' }, { status: 400 })
+    if (!VALID_PERCENTS.includes(percent)) {
+      return NextResponse.json({ error: 'Invalid bid option' }, { status: 400 })
     }
 
     await advanceAuctionState()
@@ -31,11 +33,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Auction has already ended' }, { status: 400 })
     }
 
+    // Compute the bid amount server-side
+    let amount: number
+    if (percent === 0) {
+      // First bid: only allowed when nobody has bid yet
+      if (auction.highest_bidder_id !== null) {
+        return NextResponse.json(
+          { error: 'First bid is no longer available — use a percentage option' },
+          { status: 400 }
+        )
+      }
+      amount = Math.floor(auction.current_highest_bid) + 1
+    } else {
+      // Percentage bid
+      amount = Math.ceil(auction.current_highest_bid * (1 + percent / 100))
+    }
+
+    // Safety check: computed amount must still beat current bid
     if (amount <= auction.current_highest_bid) {
-      return NextResponse.json(
-        { error: `Bid must be greater than $${auction.current_highest_bid.toLocaleString()}` },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Bid amount too low' }, { status: 400 })
     }
 
     const dbUser = await prisma.user.findUnique({
@@ -62,7 +78,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Anti-sniping: if the timer is below 20 seconds, bump it back up to 20 seconds.
-    // Bids placed with more than 20 seconds remaining don't change the end time.
     const BID_EXTENSION_MS = 20 * 1000
     const now = new Date()
     const timeLeft = auction.end_time.getTime() - now.getTime()

@@ -11,6 +11,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // Mark user as online (used for skip vote threshold)
+    await prisma.$executeRaw`UPDATE "User" SET last_active = NOW() WHERE id = ${user.userId}`
+
     await advanceAuctionState()
 
     const auction = await prisma.auction.findFirst({
@@ -36,15 +39,16 @@ export async function GET(req: NextRequest) {
     })
     const maxQuantity = getMaxQuantity(auction.car.name)
 
-    // Skip vote info
-    const [skipVotes, totalUsers, mySkipVote] = await Promise.all([
+    // Skip vote info — threshold based on online players (active in last 30s)
+    const onlineWindow = new Date(Date.now() - 30 * 1000)
+    const [skipVotes, onlineUsers, mySkipVote] = await Promise.all([
       prisma.auctionSkipVote.count({ where: { auction_id: auction.id } }),
-      prisma.user.count(),
+      prisma.user.count({ where: { last_active: { gte: onlineWindow } } }),
       prisma.auctionSkipVote.findUnique({
         where: { auction_id_user_id: { auction_id: auction.id, user_id: user.userId } },
       }),
     ])
-    const skipThreshold = Math.floor(totalUsers / 2) + 1
+    const skipThreshold = Math.floor(onlineUsers / 2) + 1
 
     return NextResponse.json({
       auction: {
@@ -59,6 +63,7 @@ export async function GET(req: NextRequest) {
         supply_max: maxQuantity,
         skip_votes: skipVotes,
         skip_threshold: skipThreshold,
+        online_users: onlineUsers,
         you_voted_skip: !!mySkipVote,
       },
       user_balance: dbUser?.balance ?? 0,

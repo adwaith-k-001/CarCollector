@@ -17,6 +17,8 @@ model User {
   last_income_time DateTime  @default(now())
   last_login       DateTime?
   last_logout      DateTime?
+  last_active      DateTime?
+  last_sell_time   DateTime?
   created_at       DateTime  @default(now())
 
   cars             UserCar[]

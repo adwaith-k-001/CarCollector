@@ -5,6 +5,8 @@ import { advanceAuctionState } from '@/lib/auctionEngine'
 import { calculateSellValue, nextUpgradeCost, MAX_GARAGE_CAPACITY } from '@/lib/depreciation'
 import { getMaxQuantity } from '@/lib/quantityData'
 
+const SELL_COOLDOWN_MS = 15 * 60 * 1000
+
 export async function GET(req: NextRequest) {
   const user = getAuthUser(req)
   if (!user) {
@@ -23,6 +25,12 @@ export async function GET(req: NextRequest) {
         },
       },
     })
+
+    // Compute sell cooldown
+    const now = Date.now()
+    const sellCooldownRemainingSecs = dbUser?.last_sell_time
+      ? Math.max(0, Math.ceil((dbUser.last_sell_time.getTime() + SELL_COOLDOWN_MS - now) / 1000))
+      : 0
 
     if (!dbUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -48,6 +56,7 @@ export async function GET(req: NextRequest) {
       garage_used: dbUser.cars.length,
       garage_max: MAX_GARAGE_CAPACITY,
       upgrade_cost: upgradeCost,
+      sell_cooldown_remaining_secs: sellCooldownRemainingSecs,
       cars: dbUser.cars.map((uc) => {
         // For legacy rows where purchase_price is 0, fall back to car's base_price
         const effectiveBasePrice = uc.purchase_price > 0 ? uc.purchase_price : uc.car.base_price

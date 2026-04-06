@@ -30,6 +30,7 @@ interface GarageData {
   garage_used: number
   garage_max: number
   upgrade_cost: number | null
+  sell_cooldown_remaining_secs: number
   cars: OwnedCar[]
 }
 
@@ -78,6 +79,7 @@ export default function GaragePage() {
   const [sellMessage, setSellMessage] = useState<{ text: string; ok: boolean } | null>(null)
   const [upgrading, setUpgrading] = useState(false)
   const [upgradeMessage, setUpgradeMessage] = useState<{ text: string; ok: boolean } | null>(null)
+  const [sellCooldown, setSellCooldown] = useState(0) // seconds remaining
 
   const getToken = useCallback(() => localStorage.getItem('token'), [])
 
@@ -103,6 +105,8 @@ export default function GaragePage() {
 
       const data = await res.json()
       setGarageData(data)
+      // Sync cooldown from server on each poll
+      setSellCooldown(data.sell_cooldown_remaining_secs ?? 0)
     } catch {
       // Silently retry
     } finally {
@@ -125,6 +129,14 @@ export default function GaragePage() {
     const interval = setInterval(fetchGarage, 3000)
     return () => clearInterval(interval)
   }, [fetchGarage])
+
+  // Local countdown tick — decrement every second, server poll re-syncs every 3s
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSellCooldown((s) => Math.max(0, s - 1))
+    }, 1000)
+    return () => clearInterval(id)
+  }, [])
 
   async function handleSell(userCarId: number, carName: string) {
     setSellMessage(null)
@@ -187,6 +199,12 @@ export default function GaragePage() {
     await callLogoutAPI()
     clearAuthStorage()
     router.push('/auth')
+  }
+
+  function formatCooldown(secs: number) {
+    const m = Math.floor(secs / 60)
+    const s = secs % 60
+    return `${m}:${s.toString().padStart(2, '0')}`
   }
 
   const balance = garageData?.balance ?? 0
@@ -404,10 +422,14 @@ export default function GaragePage() {
                       {/* Sell button */}
                       <button
                         onClick={() => handleSell(car.usercar_id, car.name)}
-                        disabled={isSelling}
+                        disabled={isSelling || sellCooldown > 0}
                         className="w-full bg-red-500/10 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed border border-red-500/30 hover:border-red-500/50 text-red-400 text-xs font-semibold py-2 rounded-lg transition-all"
                       >
-                        {isSelling ? 'Selling...' : `Sell for $${car.sell_value.toLocaleString()}`}
+                        {isSelling
+                          ? 'Selling...'
+                          : sellCooldown > 0
+                            ? `Sell locked — ${formatCooldown(sellCooldown)}`
+                            : `Sell for $${car.sell_value.toLocaleString()}`}
                       </button>
 
                       {/* Acquired date */}

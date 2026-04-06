@@ -34,13 +34,14 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Count votes and total players
-    const [skipVotes, totalUsers] = await Promise.all([
+    // Count votes and online players (active in last 30s)
+    const onlineWindow = new Date(Date.now() - 30 * 1000)
+    const [skipVotes, onlineUsers] = await Promise.all([
       prisma.auctionSkipVote.count({ where: { auction_id: auction.id } }),
-      prisma.user.count(),
+      prisma.user.count({ where: { last_active: { gte: onlineWindow } } }),
     ])
 
-    const threshold = Math.floor(totalUsers / 2) + 1 // strict majority
+    const threshold = Math.floor(onlineUsers / 2) + 1 // strict majority of online players
     const majorityReached = skipVotes >= threshold
 
     // If majority reached and there's still meaningful time left, snap to 10s
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       voted: !existing,
       skip_votes: skipVotes,
-      total_users: totalUsers,
+      total_users: onlineUsers,
       threshold,
       majority_reached: majorityReached,
     })

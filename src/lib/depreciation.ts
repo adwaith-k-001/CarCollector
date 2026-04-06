@@ -42,3 +42,15 @@ export function nextUpgradeCost(currentCapacity: number): number | null {
   if (nextSlot > MAX_GARAGE_CAPACITY) return null
   return UPGRADE_COSTS[nextSlot] ?? null
 }
+
+/**
+ * Returns the total amount spent on garage upgrades for a given capacity.
+ * Default capacity (3) costs nothing. Each slot above 3 adds its upgrade cost.
+ */
+export function totalGarageUpgradeCost(capacity: number): number {
+  let total = 0
+  for (let slots = 4; slots <= capacity; slots++) {
+    total += UPGRADE_COSTS[slots] ?? 0
+  }
+  return total
+}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
+import { calculateSellValue, totalGarageUpgradeCost } from '@/lib/depreciation'
 
 export async function GET(req: NextRequest) {
   const user = getAuthUser(req)
@@ -17,33 +18,47 @@ export async function GET(req: NextRequest) {
         garage_capacity: true,
         cars: {
           select: {
+            purchase_price: true,
+            purchase_time: true,
             car: {
               select: {
                 name: true,
                 category: true,
                 income_rate: true,
+                base_price: true,
               },
             },
           },
         },
       },
-      orderBy: { balance: 'desc' },
     })
 
-    const leaderboard = users.map((u, index) => ({
-      rank: index + 1,
-      user_id: u.id,
-      username: u.username,
-      is_you: u.id === user.userId,
-      balance: u.balance,
-      garage_capacity: u.garage_capacity,
-      car_count: u.cars.length,
-      total_income_rate: u.cars.reduce((sum, uc) => sum + uc.car.income_rate, 0),
-      cars: u.cars.map((uc) => ({
-        name: uc.car.name,
-        category: uc.car.category,
-      })),
-    }))
+    const leaderboard = users
+      .map((u) => {
+        const carValue = u.cars.reduce((sum, uc) => {
+          const effectiveBase = uc.purchase_price > 0 ? uc.purchase_price : uc.car.base_price
+          return sum + calculateSellValue(effectiveBase, uc.purchase_time)
+        }, 0)
+
+        const garageValue = totalGarageUpgradeCost(u.garage_capacity)
+        const netWorth = Math.round(u.balance + carValue + garageValue)
+
+        return {
+          user_id: u.id,
+          username: u.username,
+          is_you: u.id === user.userId,
+          balance: u.balance,
+          car_value: carValue,
+          garage_value: garageValue,
+          net_worth: netWorth,
+          garage_capacity: u.garage_capacity,
+          car_count: u.cars.length,
+          total_income_rate: u.cars.reduce((sum, uc) => sum + uc.car.income_rate, 0),
+          cars: u.cars.map((uc) => ({ name: uc.car.name, category: uc.car.category })),
+        }
+      })
+      .sort((a, b) => b.net_worth - a.net_worth)
+      .map((entry, index) => ({ ...entry, rank: index + 1 }))
 
     return NextResponse.json({ leaderboard })
   } catch (error) {

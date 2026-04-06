@@ -10,6 +10,9 @@ interface LeaderboardEntry {
   username: string
   is_you: boolean
   balance: number
+  car_value: number
+  garage_value: number
+  net_worth: number
   garage_capacity: number
   car_count: number
   total_income_rate: number
@@ -157,7 +160,7 @@ export default function LeaderboardPage() {
           <span className="text-3xl">🏆</span>
           <div>
             <h1 className="text-2xl font-bold text-white">Leaderboard</h1>
-            <p className="text-gray-500 text-sm">Ranked by current balance</p>
+            <p className="text-gray-500 text-sm">Ranked by net worth (cash + cars + garage)</p>
           </div>
         </div>
 
@@ -190,6 +193,7 @@ export default function LeaderboardPage() {
 
                     {/* Main info */}
                     <div className="flex-1 min-w-0">
+                      {/* Username + net worth */}
                       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
                         <span className={`font-bold text-lg ${entry.is_you ? 'text-orange-400' : 'text-white'}`}>
                           {entry.username}
@@ -200,24 +204,37 @@ export default function LeaderboardPage() {
                           )}
                         </span>
                         <span className="text-green-400 font-bold text-base">
-                          ${entry.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          ${entry.net_worth.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </span>
                       </div>
 
+                      {/* Net worth breakdown */}
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs mb-3">
+                        <span className="text-gray-400">
+                          💰 Cash&nbsp;
+                          <span className="text-gray-300 font-medium">
+                            ${entry.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </span>
+                        </span>
+                        <span className="text-gray-400">
+                          🚗 Cars&nbsp;
+                          <span className="text-gray-300 font-medium">
+                            ${entry.car_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </span>
+                        </span>
+                        {entry.garage_value > 0 && (
+                          <span className="text-gray-400">
+                            🏠 Garage&nbsp;
+                            <span className="text-gray-300 font-medium">
+                              ${entry.garage_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            </span>
+                          </span>
+                        )}
+                      </div>
+
                       {/* Stats row */}
-                      <div className="flex flex-wrap gap-3 text-xs text-gray-400 mb-3">
-                        <span className="flex items-center gap-1">
-                          <span>🚗</span>
-                          <span>{entry.car_count} car{entry.car_count !== 1 ? 's' : ''}</span>
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span>🏠</span>
-                          <span>{entry.car_count}/{entry.garage_capacity} slots</span>
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span>📈</span>
-                          <span>${entry.total_income_rate.toLocaleString()}/min</span>
-                        </span>
+                      <div className="flex flex-wrap gap-3 text-xs text-gray-500 mb-3">
+                        <span>{entry.car_count} car{entry.car_count !== 1 ? 's' : ''} · {entry.car_count}/{entry.garage_capacity} slots · ${entry.total_income_rate.toLocaleString()}/min</span>
                       </div>
 
                       {/* Car list */}

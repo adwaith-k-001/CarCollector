@@ -127,38 +127,43 @@ async function _advanceAuction(): Promise<void> {
     return
   }
 
-  // We exclusively own this auction's resolution
-  if (activeAuction.highest_bidder_id) {
-    const bidAmount = activeAuction.current_highest_bid
+  // Re-fetch the auction to get the freshest highest_bidder_id and current_highest_bid.
+  // The initial fetch above may have been a stale read in concurrent serverless environments
+  // (e.g. a bid committed after our initial SELECT but before we claimed the row).
+  // We own the resolution exclusively at this point, so the fresh read is safe.
+  const freshAuction = await prisma.auction.findUnique({ where: { id: activeAuction.id } })
+
+  if (freshAuction?.highest_bidder_id) {
+    const bidAmount = freshAuction.current_highest_bid
 
     // Atomically deduct balance only if the user still has enough funds.
     // This is a single SQL statement — no race window.
     const deducted: number = await prisma.$executeRaw`
       UPDATE "User"
       SET    balance = balance - ${bidAmount}
-      WHERE  id      = ${activeAuction.highest_bidder_id}
+      WHERE  id      = ${freshAuction.highest_bidder_id}
         AND  balance >= ${bidAmount}
     `
 
     if (deducted === 1) {
       // Re-check garage capacity and supply limit under our exclusive claim
       const winner = await prisma.user.findUnique({
-        where: { id: activeAuction.highest_bidder_id },
+        where: { id: freshAuction.highest_bidder_id },
         select: { garage_capacity: true },
       })
       const ownedCount = await prisma.userCar.count({
-        where: { user_id: activeAuction.highest_bidder_id },
+        where: { user_id: freshAuction.highest_bidder_id },
       })
 
       const quantities = getAllQuantities()
       const auctionCar = await prisma.car.findUnique({
-        where: { id: activeAuction.car_id },
+        where: { id: freshAuction.car_id },
         select: { name: true },
       })
       const maxQty = auctionCar ? quantities[auctionCar.name] : undefined
       const supplyCount =
         maxQty !== undefined
-          ? await prisma.userCar.count({ where: { car_id: activeAuction.car_id } })
+          ? await prisma.userCar.count({ where: { car_id: freshAuction.car_id } })
           : 0
 
       const garageOk = winner && ownedCount < winner.garage_capacity
@@ -167,8 +172,8 @@ async function _advanceAuction(): Promise<void> {
       if (garageOk && supplyOk) {
         await prisma.userCar.create({
           data: {
-            user_id: activeAuction.highest_bidder_id,
-            car_id: activeAuction.car_id,
+            user_id: freshAuction.highest_bidder_id,
+            car_id: freshAuction.car_id,
             purchase_time: now,
             purchase_price: bidAmount,
           },
@@ -176,11 +181,11 @@ async function _advanceAuction(): Promise<void> {
       } else {
         // Can't award — refund the deducted amount
         await prisma.user.update({
-          where: { id: activeAuction.highest_bidder_id },
+          where: { id: freshAuction.highest_bidder_id },
           data: { balance: { increment: bidAmount } },
         })
         console.log(
-          `[auctionEngine] Refunded $${bidAmount} to user ${activeAuction.highest_bidder_id} ` +
+          `[auctionEngine] Refunded $${bidAmount} to user ${freshAuction.highest_bidder_id} ` +
             `(${!garageOk ? 'garage full' : 'supply exhausted'})`
         )
       }

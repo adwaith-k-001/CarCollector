@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
 import { calculateSellValue } from '@/lib/depreciation'
 
+const SELL_COOLDOWN_MS = 15 * 60 * 1000 // 15 minutes
+
 export async function POST(req: NextRequest) {
   const user = getAuthUser(req)
   if (!user) {
@@ -15,6 +17,24 @@ export async function POST(req: NextRequest) {
 
     if (!userCarId || isNaN(userCarId)) {
       return NextResponse.json({ error: 'Invalid userCarId' }, { status: 400 })
+    }
+
+    // Check sell cooldown
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.userId },
+      select: { last_sell_time: true },
+    })
+
+    if (dbUser?.last_sell_time) {
+      const elapsed = Date.now() - dbUser.last_sell_time.getTime()
+      if (elapsed < SELL_COOLDOWN_MS) {
+        const remainingMs = SELL_COOLDOWN_MS - elapsed
+        const remainingSecs = Math.ceil(remainingMs / 1000)
+        return NextResponse.json(
+          { error: 'Sell cooldown active', cooldown_remaining_secs: remainingSecs },
+          { status: 429 }
+        )
+      }
     }
 
     // Fetch the UserCar record — must belong to this user
@@ -37,12 +57,15 @@ export async function POST(req: NextRequest) {
       : userCar.car.base_price
     const sellValue = calculateSellValue(effectiveBasePrice, userCar.purchase_time)
 
-    // Remove car and credit balance atomically
+    // Remove car, credit balance, and stamp last_sell_time atomically
     await prisma.$transaction([
       prisma.userCar.delete({ where: { id: userCarId } }),
       prisma.user.update({
         where: { id: user.userId },
-        data: { balance: { increment: sellValue } },
+        data: {
+          balance: { increment: sellValue },
+          last_sell_time: new Date(),
+        },
       }),
     ])
 
