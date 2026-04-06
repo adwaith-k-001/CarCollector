@@ -211,6 +211,9 @@ export default function GaragePage() {
               <Link href="/garage" className="px-3 py-1.5 rounded-lg bg-orange-500/20 text-orange-400 text-sm font-medium">
                 Garage
               </Link>
+              <Link href="/leaderboard" className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">
+                Leaderboard
+              </Link>
             </div>
           </div>
           <div className="flex items-center gap-4">
