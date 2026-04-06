@@ -210,16 +210,10 @@ async function _advanceAuction(): Promise<void> {
           ? await prisma.userCar.count({ where: { car_id: freshAuction.car_id } })
           : 0
 
-      // Check variant cap (max 2 of same variant per player)
-      const variantCount = await prisma.userCar.count({
-        where: { user_id: freshAuction.highest_bidder_id, variant: freshAuction.variant },
-      })
+      const garageOk = winner && ownedCount < winner.garage_capacity
+      const supplyOk = maxQty === undefined || supplyCount < maxQty
 
-      const garageOk  = winner && ownedCount < winner.garage_capacity
-      const supplyOk  = maxQty === undefined || supplyCount < maxQty
-      const variantOk = variantCount < MAX_SAME_VARIANT
-
-      if (garageOk && supplyOk && variantOk) {
+      if (garageOk && supplyOk) {
         // Use existing instance key (used car) or mint a new one (new car)
         const instanceKey = freshAuction.instance_key ?? randomUUID()
 
@@ -253,7 +247,7 @@ async function _advanceAuction(): Promise<void> {
           where: { id: freshAuction.highest_bidder_id },
           data:  { balance: { increment: bidAmount } },
         })
-        const reason = !garageOk ? 'garage full' : !supplyOk ? 'supply exhausted' : 'variant cap reached'
+        const reason = !garageOk ? 'garage full' : 'supply exhausted'
         console.log(`[auctionEngine] Refunded $${bidAmount} to user ${freshAuction.highest_bidder_id} (${reason})`)
       }
     }
