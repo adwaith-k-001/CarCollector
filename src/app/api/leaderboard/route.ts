@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
-import { calculateSellValue, totalGarageUpgradeCost, tuneIncomeMultiplier } from '@/lib/depreciation'
+import { calculateSellValue, currentCondition, totalGarageUpgradeCost, tuneIncomeMultiplier } from '@/lib/depreciation'
 
 export async function GET(req: NextRequest) {
   const user = getAuthUser(req)
@@ -37,7 +37,8 @@ export async function GET(req: NextRequest) {
     const leaderboard = users
       .map((u) => {
         const carValue = u.cars.reduce((sum, uc) => {
-          return sum + calculateSellValue(uc.car.base_price, uc.purchase_time, uc.condition, uc.tune_stage)
+          const cond = currentCondition(uc.condition, uc.purchase_time)
+          return sum + calculateSellValue(uc.car.base_price, cond, uc.tune_stage)
         }, 0)
 
         const garageValue = totalGarageUpgradeCost(u.garage_capacity)

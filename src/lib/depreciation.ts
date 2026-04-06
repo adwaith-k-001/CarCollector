@@ -46,16 +46,16 @@ export function tuneIncomeMultiplier(stage: number): number {
 }
 
 /**
- * Sell value = base_price × condition + 75% of total tune cost invested.
+ * Sell value = base_price × currentCond + 75% of total tune cost invested.
+ * Pass the already-computed currentCondition value so sell price matches
+ * exactly what is displayed in the UI.
  */
 export function calculateSellValue(
   basePrice: number,
-  purchaseTime: Date,
-  storedCondition: number = 1.0,
+  currentCond: number,
   tuneStage: number = 0
 ): number {
-  const cond = currentCondition(storedCondition, purchaseTime)
-  const condValue = Math.round(basePrice * cond)
+  const condValue = Math.round(basePrice * currentCond)
   const tuneResidual = Math.round(basePrice * totalTuneCostFraction(tuneStage) * 0.75)
   return condValue + tuneResidual
 }

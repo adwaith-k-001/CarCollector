@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
       sell_cooldown_remaining_secs: sellCooldownRemainingSecs,
       cars: dbUser.cars.map((uc) => {
         const cond = currentCondition(uc.condition, uc.purchase_time)
-        const sellValue = calculateSellValue(uc.car.base_price, uc.purchase_time, uc.condition, uc.tune_stage)
+        const sellValue = calculateSellValue(uc.car.base_price, cond, uc.tune_stage)
         const globallyOwned = globalCountMap.get(uc.car_id) ?? 1
         const maxQuantity = getMaxQuantity(uc.car.name)
         const effectiveIncomeRate = uc.car.income_rate * tuneIncomeMultiplier(uc.tune_stage)
