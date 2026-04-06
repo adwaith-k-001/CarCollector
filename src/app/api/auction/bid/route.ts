@@ -61,12 +61,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Extend the auction by 20 seconds on every bid (anti-sniping)
+    const BID_EXTENSION_MS = 20 * 1000
+    const extendedEndTime = new Date(auction.end_time.getTime() + BID_EXTENSION_MS)
+
     await prisma.$transaction([
       prisma.auction.update({
         where: { id: auction.id },
         data: {
           current_highest_bid: amount,
           highest_bidder_id: user.userId,
+          end_time: extendedEndTime,
         },
       }),
       prisma.bid.create({
