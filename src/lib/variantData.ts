@@ -40,9 +40,11 @@ export const MAX_SAME_VARIANT = 2
  * Stock and common fall back to the base image.
  * Luxury/hyper without variant images also fall back gracefully via browser onError.
  */
+const VARIANT_IMAGE_CATEGORIES = new Set(['sports', 'classic'])
+
 export function getCarImagePath(carName: string, variant: string, category: string): string {
   const base = `/cars/${encodeURIComponent(carName)}.jpg`
-  if (category === 'common' || variant === 'stock') return base
+  if (!VARIANT_IMAGE_CATEGORIES.has(category) || variant === 'stock') return base
   if (variant === 'performance') return `/cars/performance/${encodeURIComponent(carName)}.jpg`
   if (variant === 'clean') return `/cars/clean/${encodeURIComponent(carName)}.jpg`
   return base
