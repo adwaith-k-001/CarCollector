@@ -16,9 +16,19 @@ interface Car {
   image_path: string
 }
 
+interface CarHistoryEntry {
+  username: string
+  event: 'won_auction' | 'sold' | 'junked'
+  condition: number
+  price: number | null
+  created_at: string
+}
+
 interface AuctionData {
   id: number
   car: Car
+  is_used: boolean
+  start_condition: number
   current_highest_bid: number
   highest_bidder: string | null
   is_you_winning: boolean
@@ -30,6 +40,7 @@ interface AuctionData {
   skip_threshold: number
   online_users: number
   you_voted_skip: boolean
+  car_history: CarHistoryEntry[]
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -252,6 +263,9 @@ export default function AuctionPage() {
               <Link href="/leaderboard" className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">
                 Leaderboard
               </Link>
+              <Link href="/junkyard" className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">
+                Junkyard
+              </Link>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -314,7 +328,25 @@ export default function AuctionPage() {
                   <h2 className="text-2xl font-bold text-white">{auction.car.name}</h2>
                   <SupplyBadge owned={auction.supply_owned} max={auction.supply_max} />
                 </div>
-                <p className="text-gray-500 text-sm mb-4">Base Price: ${auction.car.base_price.toLocaleString()}</p>
+                <p className="text-gray-500 text-sm mb-3">Base Price: ${auction.car.base_price.toLocaleString()}</p>
+
+                {/* Condition bar */}
+                {(() => {
+                  const pct = Math.round(auction.start_condition * 100)
+                  const color = pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                  const label = pct >= 70 ? 'text-green-400' : pct >= 40 ? 'text-amber-400' : 'text-red-400'
+                  return (
+                    <div className="mb-4">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-gray-400">Condition {auction.is_used ? '(used)' : '(new)'}</span>
+                        <span className={`font-bold ${label}`}>{pct}%</span>
+                      </div>
+                      <div className="h-2 bg-[#0a0a14] rounded-full overflow-hidden">
+                        <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {/* Stats */}
                 <div className="space-y-3">
@@ -329,6 +361,30 @@ export default function AuctionPage() {
                     ${auction.car.income_rate.toLocaleString()}<span className="text-gray-500 font-normal">/min</span>
                   </span>
                 </div>
+
+                {/* Car history (used cars only) */}
+                {auction.is_used && auction.car_history.length > 0 && (
+                  <div className="mt-4 bg-[#0a0a14] rounded-xl p-3">
+                    <div className="text-xs text-gray-500 font-semibold mb-2 uppercase tracking-wide">Ownership History</div>
+                    <div className="space-y-1.5">
+                      {auction.car_history.map((entry, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <span className="text-gray-400">
+                            <span className="text-white font-medium">{entry.username}</span>
+                            {' · '}
+                            {entry.event === 'won_auction' ? 'bought at auction' : entry.event === 'sold' ? 'sold' : 'junked'}
+                          </span>
+                          <span className={`font-medium ${
+                            entry.condition >= 0.7 ? 'text-green-400' :
+                            entry.condition >= 0.4 ? 'text-amber-400' : 'text-red-400'
+                          }`}>
+                            {Math.round(entry.condition * 100)}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

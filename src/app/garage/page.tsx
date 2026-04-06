@@ -6,6 +6,7 @@ import { callLogoutAPI, clearAuthStorage } from '@/lib/logout'
 
 interface OwnedCar {
   usercar_id: number
+  instance_key: string
   id: string
   name: string
   category: string
@@ -18,6 +19,8 @@ interface OwnedCar {
   acquired_at: string
   purchase_time: string
   purchase_price: number
+  condition: number
+  current_condition: number
   sell_value: number
   globally_owned: number
   max_quantity: number | null
@@ -155,7 +158,9 @@ export default function GaragePage() {
         setSellMessage({ text: data.error || 'Sell failed', ok: false })
       } else {
         setSellMessage({
-          text: `Sold ${carName} for $${data.sell_value.toLocaleString()}`,
+          text: data.junked
+            ? `${carName} was junked (condition too low) — received $${data.sell_value.toLocaleString()} scrap`
+            : `Sold ${carName} for $${data.sell_value.toLocaleString()}`,
           ok: true,
         })
         fetchGarage()
@@ -231,6 +236,9 @@ export default function GaragePage() {
               </Link>
               <Link href="/leaderboard" className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">
                 Leaderboard
+              </Link>
+              <Link href="/junkyard" className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">
+                Junkyard
               </Link>
             </div>
           </div>
@@ -399,6 +407,24 @@ export default function GaragePage() {
                         <StatMini label="Style" value={car.style} />
                         <StatMini label="Reliab." value={car.reliability} />
                       </div>
+
+                      {/* Condition */}
+                      {(() => {
+                        const pct   = Math.round(car.current_condition * 100)
+                        const bar   = pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                        const label = pct >= 70 ? 'text-green-400' : pct >= 40 ? 'text-amber-400' : 'text-red-400'
+                        return (
+                          <div className="mb-2">
+                            <div className="flex justify-between text-xs mb-1">
+                              <span className="text-gray-400">Condition</span>
+                              <span className={`font-bold ${label}`}>{pct}%</span>
+                            </div>
+                            <div className="h-1.5 bg-[#0a0a14] rounded-full overflow-hidden">
+                              <div className={`h-full ${bar} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        )
+                      })()}
 
                       {/* Income */}
                       <div className="flex items-center justify-between bg-green-500/10 border border-green-500/20 rounded-xl px-3 py-2 mb-2">

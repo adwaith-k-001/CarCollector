@@ -1,13 +1,13 @@
+import { randomUUID } from 'crypto'
 import { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
 import { getAllQuantities } from './quantityData'
+import { currentCondition, MIN_VALUE_RATIO } from './depreciation'
 
-const AUCTION_DURATION_MS = 60 * 1000
-const INCOME_INTERVAL_MS = 60 * 1000
+const AUCTION_DURATION_MS  = 60 * 1000
+const INCOME_INTERVAL_MS   = 60 * 1000
 const INTEGRITY_INTERVAL_MS = 60 * 1000
 
-// Module-level timestamp for throttling the integrity check.
-// Resets on serverless cold-starts — that's fine; running it a bit more often is harmless.
 let lastIntegrityCheck = 0
 
 export async function advanceAuctionState(): Promise<void> {
@@ -54,12 +54,11 @@ async function _checkIntegrity(): Promise<void> {
       take: excess,
       select: { id: true },
     })
-    const ids = toRemove.map((c) => c.id)
-    await prisma.userCar.deleteMany({ where: { id: { in: ids } } })
-    console.warn(`[integrity] Removed ${ids.length} garage-overflow car(s) from user ${row.id}`)
+    await prisma.userCar.deleteMany({ where: { id: { in: toRemove.map((c) => c.id) } } })
+    console.warn(`[integrity] Removed ${toRemove.length} garage-overflow car(s) from user ${row.id}`)
   }
 
-  // 3. Fix supply overflows — remove the most recently acquired instances above max qty
+  // 3. Fix supply overflows
   const quantities = getAllQuantities()
   const allCars = await prisma.car.findMany({ select: { id: true, name: true } })
   for (const car of allCars) {
@@ -74,9 +73,61 @@ async function _checkIntegrity(): Promise<void> {
       take: excess,
       select: { id: true },
     })
-    const ids = toRemove.map((c) => c.id)
-    await prisma.userCar.deleteMany({ where: { id: { in: ids } } })
-    console.warn(`[integrity] Removed ${ids.length} supply-overflow ${car.name}(s)`)
+    await prisma.userCar.deleteMany({ where: { id: { in: toRemove.map((c) => c.id) } } })
+    console.warn(`[integrity] Removed ${toRemove.length} supply-overflow ${car.name}(s)`)
+  }
+
+  // 4. Junk cars that have reached 20% condition
+  await _junkDegradedCars()
+}
+
+async function _junkDegradedCars(): Promise<void> {
+  const userCars = await prisma.userCar.findMany({
+    include: {
+      car:  { select: { base_price: true, name: true } },
+      user: { select: { id: true, username: true } },
+    },
+  })
+
+  for (const uc of userCars) {
+    const cond = currentCondition(uc.condition, uc.purchase_time)
+    if (cond > MIN_VALUE_RATIO) continue
+
+    const instanceKey = uc.instance_key ?? randomUUID()
+    const scrapValue  = Math.round(uc.car.base_price * MIN_VALUE_RATIO)
+
+    await prisma.$transaction([
+      prisma.userCar.delete({ where: { id: uc.id } }),
+      prisma.junkyardCar.create({
+        data: {
+          instance_key:  instanceKey,
+          car_id:        uc.car_id,
+          condition:     cond,
+          last_owner_id: uc.user_id,
+          last_username: uc.user.username,
+        },
+      }),
+      prisma.carHistoryEntry.create({
+        data: {
+          instance_key: instanceKey,
+          car_id:       uc.car_id,
+          user_id:      uc.user_id,
+          username:     uc.user.username,
+          event:        'junked',
+          condition:    cond,
+          price:        scrapValue,
+        },
+      }),
+      prisma.user.update({
+        where: { id: uc.user_id },
+        data:  { balance: { increment: scrapValue } },
+      }),
+    ])
+
+    console.log(
+      `[integrity] Junked ${uc.car.name} (${(cond * 100).toFixed(1)}%) ` +
+      `from ${uc.user.username} — scrap: $${scrapValue}`
+    )
   }
 }
 
@@ -85,7 +136,6 @@ async function _checkIntegrity(): Promise<void> {
 async function _advanceAuction(): Promise<void> {
   const now = new Date()
 
-  // Fetch ALL active auctions ordered newest-first.
   const activeAuctions = await prisma.auction.findMany({
     where: { is_active: true },
     orderBy: { start_time: 'desc' },
@@ -101,43 +151,32 @@ async function _advanceAuction(): Promise<void> {
     const phantomIds = activeAuctions.slice(1).map((a) => a.id)
     await prisma.auction.updateMany({
       where: { id: { in: phantomIds } },
-      data: { is_active: false },
+      data:  { is_active: false },
     })
     console.log(`[auctionEngine] Cleaned up ${phantomIds.length} phantom auction(s)`)
   }
 
   const activeAuction = activeAuctions[0]
 
-  if (activeAuction.end_time > now) {
-    // Auction still running — nothing to do
-    return
-  }
+  if (activeAuction.end_time > now) return  // still running
 
   // ── Optimistic claim ────────────────────────────────────────────────────────
-  // Only one concurrent process will see count=1 here; the rest see count=0 and skip.
-  // This prevents the "24 cars in one bid" double-award race condition.
   const claimed = await prisma.auction.updateMany({
     where: { id: activeAuction.id, is_active: true },
-    data: { is_active: false },
+    data:  { is_active: false },
   })
 
   if (claimed.count === 0) {
-    // Another serverless invocation already resolved this auction
     await _startNewAuction()
     return
   }
 
-  // Re-fetch the auction to get the freshest highest_bidder_id and current_highest_bid.
-  // The initial fetch above may have been a stale read in concurrent serverless environments
-  // (e.g. a bid committed after our initial SELECT but before we claimed the row).
-  // We own the resolution exclusively at this point, so the fresh read is safe.
+  // Re-fetch for fresh bid/bidder (avoids stale reads in concurrent envs)
   const freshAuction = await prisma.auction.findUnique({ where: { id: activeAuction.id } })
 
   if (freshAuction?.highest_bidder_id) {
     const bidAmount = freshAuction.current_highest_bid
 
-    // Atomically deduct balance only if the user still has enough funds.
-    // This is a single SQL statement — no race window.
     const deducted: number = await prisma.$executeRaw`
       UPDATE "User"
       SET    balance = balance - ${bidAmount}
@@ -146,10 +185,9 @@ async function _advanceAuction(): Promise<void> {
     `
 
     if (deducted === 1) {
-      // Re-check garage capacity and supply limit under our exclusive claim
       const winner = await prisma.user.findUnique({
-        where: { id: freshAuction.highest_bidder_id },
-        select: { garage_capacity: true },
+        where:  { id: freshAuction.highest_bidder_id },
+        select: { garage_capacity: true, username: true },
       })
       const ownedCount = await prisma.userCar.count({
         where: { user_id: freshAuction.highest_bidder_id },
@@ -157,7 +195,7 @@ async function _advanceAuction(): Promise<void> {
 
       const quantities = getAllQuantities()
       const auctionCar = await prisma.car.findUnique({
-        where: { id: freshAuction.car_id },
+        where:  { id: freshAuction.car_id },
         select: { name: true },
       })
       const maxQty = auctionCar ? quantities[auctionCar.name] : undefined
@@ -170,62 +208,114 @@ async function _advanceAuction(): Promise<void> {
       const supplyOk = maxQty === undefined || supplyCount < maxQty
 
       if (garageOk && supplyOk) {
-        await prisma.userCar.create({
-          data: {
-            user_id: freshAuction.highest_bidder_id,
-            car_id: freshAuction.car_id,
-            purchase_time: now,
-            purchase_price: bidAmount,
-          },
-        })
+        // Use existing instance key (used car) or mint a new one (new car)
+        const instanceKey = freshAuction.instance_key ?? randomUUID()
+
+        await prisma.$transaction([
+          prisma.userCar.create({
+            data: {
+              instance_key:   instanceKey,
+              user_id:        freshAuction.highest_bidder_id,
+              car_id:         freshAuction.car_id,
+              purchase_time:  now,
+              purchase_price: bidAmount,
+              condition:      freshAuction.start_condition,
+            },
+          }),
+          prisma.carHistoryEntry.create({
+            data: {
+              instance_key: instanceKey,
+              car_id:       freshAuction.car_id,
+              user_id:      freshAuction.highest_bidder_id,
+              username:     winner!.username,
+              event:        'won_auction',
+              condition:    freshAuction.start_condition,
+              price:        bidAmount,
+            },
+          }),
+        ])
       } else {
-        // Can't award — refund the deducted amount
         await prisma.user.update({
           where: { id: freshAuction.highest_bidder_id },
-          data: { balance: { increment: bidAmount } },
+          data:  { balance: { increment: bidAmount } },
         })
         console.log(
           `[auctionEngine] Refunded $${bidAmount} to user ${freshAuction.highest_bidder_id} ` +
-            `(${!garageOk ? 'garage full' : 'supply exhausted'})`
+          `(${!garageOk ? 'garage full' : 'supply exhausted'})`
         )
       }
     }
-    // If deducted === 0 the user no longer has enough balance — auction closes without award
   }
 
   await _startNewAuction()
 }
 
 async function _startNewAuction(): Promise<void> {
-  // Pre-select the car outside the transaction (no DB writes, safe to do outside)
+  const startTime = new Date()
+  const endTime   = new Date(startTime.getTime() + AUCTION_DURATION_MS)
+
+  // ── Prefer used cars from the resale pool ────────────────────────────────
+  const usedPool = await prisma.availableCarInstance.findMany({
+    include: { car: { select: { id: true, name: true, base_price: true } } },
+  })
+
+  if (usedPool.length > 0) {
+    const pick = usedPool[Math.floor(Math.random() * usedPool.length)]
+    const startBid = Math.max(1, Math.round(pick.car.base_price * pick.condition))
+
+    try {
+      await prisma.$transaction(
+        async (tx) => {
+          const existing = await tx.auction.findFirst({ where: { is_active: true } })
+          if (existing) return
+
+          await tx.availableCarInstance.delete({ where: { id: pick.id } })
+          await tx.auction.create({
+            data: {
+              car_id:              pick.car_id,
+              instance_key:        pick.instance_key,
+              start_condition:     pick.condition,
+              current_highest_bid: startBid,
+              start_time:          startTime,
+              end_time:            endTime,
+              is_active:           true,
+            },
+          })
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+      )
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2034') return
+      throw err
+    }
+    return
+  }
+
+  // ── No used cars — pick a new car ────────────────────────────────────────
   const allCars = await prisma.car.findMany({
     select: { id: true, name: true, base_price: true },
   })
   if (allCars.length === 0) return
 
   const quantities = getAllQuantities()
-  const ownershipCounts = await prisma.userCar.groupBy({
-    by: ['car_id'],
-    _count: { car_id: true },
-  })
-  const ownedMap = new Map(ownershipCounts.map((o) => [o.car_id, o._count.car_id]))
+
+  const [ownedCounts, availableCounts] = await Promise.all([
+    prisma.userCar.groupBy({ by: ['car_id'], _count: { car_id: true } }),
+    prisma.availableCarInstance.groupBy({ by: ['car_id'], _count: { car_id: true } }),
+  ])
+  const ownedMap     = new Map(ownedCounts.map((o) => [o.car_id, o._count.car_id]))
+  const availableMap = new Map(availableCounts.map((a) => [a.car_id, a._count.car_id]))
 
   const eligibleCars = allCars.filter((car) => {
     const maxQty = quantities[car.name]
     if (maxQty === undefined) return true
-    return (ownedMap.get(car.id) ?? 0) < maxQty
+    return (ownedMap.get(car.id) ?? 0) + (availableMap.get(car.id) ?? 0) < maxQty
   })
   if (eligibleCars.length === 0) return
 
   const randomCar = eligibleCars[Math.floor(Math.random() * eligibleCars.length)]
-  const startTime = new Date()
-  const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS)
 
   try {
-    // Serializable transaction: PostgreSQL ensures only ONE concurrent caller
-    // can pass the "no active auction" check and insert. All others get a
-    // serialization error (P2034), which we catch and swallow — they lost the
-    // race and that's fine. This eliminates the phantom-auction / car-skipping bug.
     await prisma.$transaction(
       async (tx) => {
         const existing = await tx.auction.findFirst({ where: { is_active: true } })
@@ -233,18 +323,19 @@ async function _startNewAuction(): Promise<void> {
 
         await tx.auction.create({
           data: {
-            car_id: randomCar.id,
+            car_id:              randomCar.id,
+            instance_key:        null,
+            start_condition:     1.0,
             current_highest_bid: randomCar.base_price,
-            start_time: startTime,
-            end_time: endTime,
-            is_active: true,
+            start_time:          startTime,
+            end_time:            endTime,
+            is_active:           true,
           },
         })
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     )
   } catch (err) {
-    // P2034 = serialization conflict — another process created the auction first
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2034') return
     throw err
   }
@@ -254,38 +345,27 @@ async function _startNewAuction(): Promise<void> {
 
 async function _generateIncome(): Promise<void> {
   const users = await prisma.user.findMany({
-    where: {
-      cars: { some: {} },
-    },
-    include: {
-      cars: {
-        include: { car: { select: { income_rate: true } } },
-      },
-    },
+    where:   { cars: { some: {} } },
+    include: { cars: { include: { car: { select: { income_rate: true } } } } },
   })
 
   const now = new Date()
 
   for (const user of users) {
     const elapsed = now.getTime() - user.last_income_time.getTime()
-    const cycles = Math.floor(elapsed / INCOME_INTERVAL_MS)
+    const cycles  = Math.floor(elapsed / INCOME_INTERVAL_MS)
+    if (cycles === 0) continue
 
-    if (cycles > 0) {
-      const incomePerCycle = user.cars.reduce((sum, uc) => sum + uc.car.income_rate, 0)
-      const totalIncome = incomePerCycle * cycles
-      const newLastIncomeTime = new Date(
-        user.last_income_time.getTime() + cycles * INCOME_INTERVAL_MS
-      )
+    const incomePerCycle  = user.cars.reduce((sum, uc) => sum + uc.car.income_rate, 0)
+    const totalIncome     = incomePerCycle * cycles
+    const newLastIncome   = new Date(user.last_income_time.getTime() + cycles * INCOME_INTERVAL_MS)
 
-      // Optimistic locking: only update if last_income_time hasn't been changed by
-      // another concurrent request. This prevents the "+20k double-income" race.
-      await prisma.$executeRaw`
-        UPDATE "User"
-        SET    balance          = balance + ${totalIncome},
-               last_income_time = ${newLastIncomeTime}
-        WHERE  id               = ${user.id}
-          AND  last_income_time = ${user.last_income_time}
-      `
-    }
+    await prisma.$executeRaw`
+      UPDATE "User"
+      SET    balance          = balance + ${totalIncome},
+             last_income_time = ${newLastIncome}
+      WHERE  id               = ${user.id}
+        AND  last_income_time = ${user.last_income_time}
+    `
   }
 }

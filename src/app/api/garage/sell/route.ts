@@ -1,9 +1,10 @@
+import { randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
-import { calculateSellValue } from '@/lib/depreciation'
+import { calculateSellValue, currentCondition, MIN_VALUE_RATIO } from '@/lib/depreciation'
 
-const SELL_COOLDOWN_MS = 15 * 60 * 1000 // 15 minutes
+const SELL_COOLDOWN_MS = 15 * 60 * 1000
 
 export async function POST(req: NextRequest) {
   const user = getAuthUser(req)
@@ -28,8 +29,7 @@ export async function POST(req: NextRequest) {
     if (dbUser?.last_sell_time) {
       const elapsed = Date.now() - dbUser.last_sell_time.getTime()
       if (elapsed < SELL_COOLDOWN_MS) {
-        const remainingMs = SELL_COOLDOWN_MS - elapsed
-        const remainingSecs = Math.ceil(remainingMs / 1000)
+        const remainingSecs = Math.ceil((SELL_COOLDOWN_MS - elapsed) / 1000)
         return NextResponse.json(
           { error: 'Sell cooldown active', cooldown_remaining_secs: remainingSecs },
           { status: 429 }
@@ -37,42 +37,89 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Fetch the UserCar record — must belong to this user
     const userCar = await prisma.userCar.findUnique({
-      where: { id: userCarId },
-      include: { car: true },
+      where:   { id: userCarId },
+      include: { car: true, user: { select: { id: true, username: true } } },
     })
 
-    if (!userCar) {
-      return NextResponse.json({ error: 'Car not found' }, { status: 404 })
+    if (!userCar) return NextResponse.json({ error: 'Car not found' }, { status: 404 })
+    if (userCar.user_id !== user.userId) return NextResponse.json({ error: 'Not your car' }, { status: 403 })
+
+    const cond        = currentCondition(userCar.condition, userCar.purchase_time)
+    const sellValue   = calculateSellValue(userCar.car.base_price, userCar.purchase_time, userCar.condition)
+    const instanceKey = userCar.instance_key ?? randomUUID()
+
+    if (cond <= MIN_VALUE_RATIO) {
+      // ── Car is at floor — junk it ──────────────────────────────────────────
+      await prisma.$transaction([
+        prisma.userCar.delete({ where: { id: userCarId } }),
+        prisma.junkyardCar.create({
+          data: {
+            instance_key:  instanceKey,
+            car_id:        userCar.car_id,
+            condition:     cond,
+            last_owner_id: user.userId,
+            last_username: userCar.user.username,
+          },
+        }),
+        prisma.carHistoryEntry.create({
+          data: {
+            instance_key: instanceKey,
+            car_id:       userCar.car_id,
+            user_id:      user.userId,
+            username:     userCar.user.username,
+            event:        'junked',
+            condition:    cond,
+            price:        sellValue,
+          },
+        }),
+        prisma.user.update({
+          where: { id: user.userId },
+          data:  { balance: { increment: sellValue }, last_sell_time: new Date() },
+        }),
+      ])
+
+      return NextResponse.json({
+        success:    true,
+        junked:     true,
+        car_name:   userCar.car.name,
+        sell_value: sellValue,
+      })
     }
 
-    if (userCar.user_id !== user.userId) {
-      return NextResponse.json({ error: 'Not your car' }, { status: 403 })
-    }
-
-    // Calculate current sell value
-    const effectiveBasePrice = userCar.purchase_price > 0
-      ? userCar.purchase_price
-      : userCar.car.base_price
-    const sellValue = calculateSellValue(effectiveBasePrice, userCar.purchase_time)
-
-    // Remove car, credit balance, and stamp last_sell_time atomically
+    // ── Normal sell — return car to resale pool ────────────────────────────
     await prisma.$transaction([
       prisma.userCar.delete({ where: { id: userCarId } }),
+      prisma.availableCarInstance.create({
+        data: {
+          instance_key: instanceKey,
+          car_id:       userCar.car_id,
+          condition:    cond,
+        },
+      }),
+      prisma.carHistoryEntry.create({
+        data: {
+          instance_key: instanceKey,
+          car_id:       userCar.car_id,
+          user_id:      user.userId,
+          username:     userCar.user.username,
+          event:        'sold',
+          condition:    cond,
+          price:        sellValue,
+        },
+      }),
       prisma.user.update({
         where: { id: user.userId },
-        data: {
-          balance: { increment: sellValue },
-          last_sell_time: new Date(),
-        },
+        data:  { balance: { increment: sellValue }, last_sell_time: new Date() },
       }),
     ])
 
     return NextResponse.json({
-      success: true,
-      car_name: userCar.car.name,
+      success:    true,
+      junked:     false,
+      car_name:   userCar.car.name,
       sell_value: sellValue,
+      condition:  cond,
     })
   } catch (error) {
     console.error('Sell error:', error)

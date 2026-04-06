@@ -18,8 +18,8 @@ export async function GET(req: NextRequest) {
         garage_capacity: true,
         cars: {
           select: {
-            purchase_price: true,
             purchase_time: true,
+            condition: true,
             car: {
               select: {
                 name: true,
@@ -36,8 +36,7 @@ export async function GET(req: NextRequest) {
     const leaderboard = users
       .map((u) => {
         const carValue = u.cars.reduce((sum, uc) => {
-          const effectiveBase = uc.purchase_price > 0 ? uc.purchase_price : uc.car.base_price
-          return sum + calculateSellValue(effectiveBase, uc.purchase_time)
+          return sum + calculateSellValue(uc.car.base_price, uc.purchase_time, uc.condition)
         }, 0)
 
         const garageValue = totalGarageUpgradeCost(u.garage_capacity)

@@ -1,33 +1,43 @@
 /**
- * Calculates the current sell value of a car using time-based exponential decay.
+ * Car condition decays exponentially while owned by a player.
  *
- * Formula: value = basePrice × e^(-k × hoursOwned)
- * Minimum:        0.40 × basePrice
+ * Formula: effectiveCondition = storedCondition × e^(-k × hoursOwned)
+ * Floor:   MIN_VALUE_RATIO (20%) — at this point the car is junked.
  *
- * k = 0.02 → car reaches 40% floor at ~46 hours owned.
+ * k = ln(5) / 168 ≈ 0.00958  →  a brand-new car (condition 1.0) hits 20% at exactly 7 days.
  */
-const DECAY_RATE = 0.02
-const MIN_VALUE_RATIO = 0.40
+export const DECAY_RATE = Math.log(5) / 168   // ≈ 0.00958
+export const MIN_VALUE_RATIO = 0.20
 
-export function calculateSellValue(basePrice: number, purchaseTime: Date): number {
-  const now = new Date()
-  const msOwned = now.getTime() - purchaseTime.getTime()
-  const hoursOwned = Math.max(0, msOwned / (1000 * 60 * 60))
-
-  const decayed = basePrice * Math.exp(-DECAY_RATE * hoursOwned)
-  const minimum = basePrice * MIN_VALUE_RATIO
-
-  return Math.round(Math.max(decayed, minimum))
+/**
+ * Current effective condition for a car given its stored condition and when the
+ * current owner acquired it.  Returns a value in [MIN_VALUE_RATIO, 1.0].
+ */
+export function currentCondition(storedCondition: number, purchaseTime: Date): number {
+  const hoursOwned = Math.max(0, (Date.now() - purchaseTime.getTime()) / (1000 * 60 * 60))
+  const decayed = storedCondition * Math.exp(-DECAY_RATE * hoursOwned)
+  return Math.max(MIN_VALUE_RATIO, decayed)
 }
 
-/** Returns the upgrade cost to reach the given slot count (4–10). */
+/**
+ * Sell value = car's catalogue base_price × current effective condition.
+ */
+export function calculateSellValue(
+  basePrice: number,
+  purchaseTime: Date,
+  storedCondition: number = 1.0
+): number {
+  return Math.round(basePrice * currentCondition(storedCondition, purchaseTime))
+}
+
+/** Upgrade costs to reach each slot count (4–10). */
 const UPGRADE_COSTS: Record<number, number> = {
-  4: 500_000,
-  5: 750_000,
-  6: 1_100_000,
-  7: 1_600_000,
-  8: 2_300_000,
-  9: 3_200_000,
+  4:  500_000,
+  5:  750_000,
+  6:  1_100_000,
+  7:  1_600_000,
+  8:  2_300_000,
+  9:  3_200_000,
   10: 4_500_000,
 }
 
@@ -45,7 +55,7 @@ export function nextUpgradeCost(currentCapacity: number): number | null {
 
 /**
  * Returns the total amount spent on garage upgrades for a given capacity.
- * Default capacity (3) costs nothing. Each slot above 3 adds its upgrade cost.
+ * Default capacity (3) costs nothing.
  */
 export function totalGarageUpgradeCost(capacity: number): number {
   let total = 0

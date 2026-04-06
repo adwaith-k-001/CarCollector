@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Mark user as online (used for skip vote threshold)
+    // Mark user as online
     await prisma.$executeRaw`UPDATE "User" SET last_active = NOW() WHERE id = ${user.userId}`
 
     await advanceAuctionState()
@@ -29,15 +29,13 @@ export async function GET(req: NextRequest) {
     }
 
     const dbUser = await prisma.user.findUnique({
-      where: { id: user.userId },
+      where:  { id: user.userId },
       select: { balance: true, garage_capacity: true },
     })
 
     // Supply info
-    const globallyOwned = await prisma.userCar.count({
-      where: { car_id: auction.car_id },
-    })
-    const maxQuantity = getMaxQuantity(auction.car.name)
+    const globallyOwned = await prisma.userCar.count({ where: { car_id: auction.car_id } })
+    const maxQuantity   = getMaxQuantity(auction.car.name)
 
     // Skip vote info — threshold based on online players (active in last 30s)
     const onlineWindow = new Date(Date.now() - 30 * 1000)
@@ -50,23 +48,41 @@ export async function GET(req: NextRequest) {
     ])
     const skipThreshold = Math.floor(onlineUsers / 2) + 1
 
+    // Car history for used cars
+    const carHistory = auction.instance_key
+      ? await prisma.carHistoryEntry.findMany({
+          where:   { instance_key: auction.instance_key },
+          orderBy: { created_at: 'asc' },
+          select: {
+            username:   true,
+            event:      true,
+            condition:  true,
+            price:      true,
+            created_at: true,
+          },
+        })
+      : []
+
     return NextResponse.json({
       auction: {
-        id: auction.id,
-        car: auction.car,
+        id:                  auction.id,
+        car:                 auction.car,
+        is_used:             auction.instance_key !== null,
+        start_condition:     auction.start_condition,
         current_highest_bid: auction.current_highest_bid,
-        highest_bidder: auction.highest_bidder?.username ?? null,
-        is_you_winning: auction.highest_bidder_id === user.userId,
-        start_time: auction.start_time,
-        end_time: auction.end_time,
-        supply_owned: globallyOwned,
-        supply_max: maxQuantity,
-        skip_votes: skipVotes,
-        skip_threshold: skipThreshold,
-        online_users: onlineUsers,
-        you_voted_skip: !!mySkipVote,
+        highest_bidder:      auction.highest_bidder?.username ?? null,
+        is_you_winning:      auction.highest_bidder_id === user.userId,
+        start_time:          auction.start_time,
+        end_time:            auction.end_time,
+        supply_owned:        globallyOwned,
+        supply_max:          maxQuantity,
+        skip_votes:          skipVotes,
+        skip_threshold:      skipThreshold,
+        online_users:        onlineUsers,
+        you_voted_skip:      !!mySkipVote,
+        car_history:         carHistory,
       },
-      user_balance: dbUser?.balance ?? 0,
+      user_balance:    dbUser?.balance ?? 0,
       garage_capacity: dbUser?.garage_capacity ?? 3,
     })
   } catch (error) {

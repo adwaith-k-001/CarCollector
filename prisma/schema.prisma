@@ -23,8 +23,9 @@ model User {
 
   cars             UserCar[]
   bids             Bid[]
-  won_auctions     Auction[] @relation("HighestBidder")
+  won_auctions     Auction[]        @relation("HighestBidder")
   skip_votes       AuctionSkipVote[]
+  car_history      CarHistoryEntry[]
 }
 
 model Car {
@@ -38,35 +39,82 @@ model Car {
   income_rate  Float
   image_path   String
 
-  user_cars    UserCar[]
-  auctions     Auction[]
+  user_cars           UserCar[]
+  auctions            Auction[]
+  available_instances AvailableCarInstance[]
+  junkyard_cars       JunkyardCar[]
+  history_entries     CarHistoryEntry[]
 }
 
 model Auction {
   id                  Int      @id @default(autoincrement())
   car_id              String
+  instance_key        String?  // null = brand-new car; set = used car from pool
+  start_condition     Float    @default(1.0)
   current_highest_bid Float
   highest_bidder_id   Int?
   start_time          DateTime @default(now())
   end_time            DateTime
   is_active           Boolean  @default(true)
 
-  car                 Car      @relation(fields: [car_id], references: [id])
-  highest_bidder      User?    @relation("HighestBidder", fields: [highest_bidder_id], references: [id])
-  bids                Bid[]
-  skip_votes          AuctionSkipVote[]
+  car            Car      @relation(fields: [car_id], references: [id])
+  highest_bidder User?    @relation("HighestBidder", fields: [highest_bidder_id], references: [id])
+  bids           Bid[]
+  skip_votes     AuctionSkipVote[]
 }
 
 model UserCar {
   id             Int      @id @default(autoincrement())
+  instance_key   String   @unique @default(dbgenerated("gen_random_uuid()::text"))
   user_id        Int
   car_id         String
   acquired_at    DateTime @default(now())
   purchase_time  DateTime @default(now())
   purchase_price Float    @default(0)
+  condition      Float    @default(1.0)  // condition at time of acquisition
 
-  user           User     @relation(fields: [user_id], references: [id])
-  car            Car      @relation(fields: [car_id], references: [id])
+  user User @relation(fields: [user_id], references: [id])
+  car  Car  @relation(fields: [car_id], references: [id])
+}
+
+// Cars sold by players, waiting to be re-auctioned
+model AvailableCarInstance {
+  id           Int      @id @default(autoincrement())
+  instance_key String   @unique
+  car_id       String
+  condition    Float
+  listed_at    DateTime @default(now())
+
+  car Car @relation(fields: [car_id], references: [id])
+}
+
+// Cars that reached 20% condition and were decommissioned
+model JunkyardCar {
+  id             Int      @id @default(autoincrement())
+  instance_key   String   @unique
+  car_id         String
+  condition      Float
+  junked_at      DateTime @default(now())
+  last_owner_id  Int?
+  last_username  String?
+
+  car Car @relation(fields: [car_id], references: [id])
+}
+
+// Full ownership + event log per car instance
+model CarHistoryEntry {
+  id           Int      @id @default(autoincrement())
+  instance_key String
+  car_id       String
+  user_id      Int?
+  username     String
+  event        String   // "won_auction" | "sold" | "junked"
+  condition    Float
+  price        Float?
+  created_at   DateTime @default(now())
+
+  car  Car   @relation(fields: [car_id], references: [id])
+  user User? @relation(fields: [user_id], references: [id])
 }
 
 model Bid {
@@ -76,8 +124,8 @@ model Bid {
   amount     Float
   created_at DateTime @default(now())
 
-  auction    Auction  @relation(fields: [auction_id], references: [id])
-  user       User     @relation(fields: [user_id], references: [id])
+  auction Auction @relation(fields: [auction_id], references: [id])
+  user    User    @relation(fields: [user_id], references: [id])
 }
 
 model AuctionSkipVote {
@@ -85,8 +133,8 @@ model AuctionSkipVote {
   user_id    Int
   created_at DateTime @default(now())
 
-  auction    Auction  @relation(fields: [auction_id], references: [id])
-  user       User     @relation(fields: [user_id], references: [id])
+  auction Auction @relation(fields: [auction_id], references: [id])
+  user    User    @relation(fields: [user_id], references: [id])
 
   @@id([auction_id, user_id])
 }

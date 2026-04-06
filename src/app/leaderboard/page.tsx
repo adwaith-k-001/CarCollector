@@ -138,6 +138,9 @@ export default function LeaderboardPage() {
               <Link href="/leaderboard" className="px-3 py-1.5 rounded-lg bg-orange-500/20 text-orange-400 text-sm font-medium">
                 Leaderboard
               </Link>
+              <Link href="/junkyard" className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">
+                Junkyard
+              </Link>
             </div>
           </div>
           <div className="flex items-center gap-4">
