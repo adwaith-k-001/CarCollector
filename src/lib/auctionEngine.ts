@@ -264,12 +264,13 @@ async function _startNewAuction(): Promise<void> {
 
   // ── Prefer used cars from the resale pool ────────────────────────────────
   const usedPool = await prisma.availableCarInstance.findMany({
-    include: { car: { select: { id: true, name: true, base_price: true } } },
+    include: { car: { select: { id: true, name: true, base_price: true, category: true } } },
   })
 
   if (usedPool.length > 0) {
     const pick = usedPool[Math.floor(Math.random() * usedPool.length)]
-    const variant = getVariant(pick.variant)
+    const effectiveVariant = pick.car.category === 'common' ? 'clean' : pick.variant
+    const variant = getVariant(effectiveVariant)
     const startBid = Math.max(1, Math.round(pick.car.base_price * pick.condition * (1 + variant.resale_bonus)))
 
     try {
@@ -285,7 +286,7 @@ async function _startNewAuction(): Promise<void> {
               instance_key:        pick.instance_key,
               start_condition:     pick.condition,
               tune_stage:          pick.tune_stage,
-              variant:             pick.variant,
+              variant:             effectiveVariant,
               current_highest_bid: startBid,
               start_time:          startTime,
               end_time:            endTime,
@@ -304,7 +305,7 @@ async function _startNewAuction(): Promise<void> {
 
   // ── No used cars — pick a new car ────────────────────────────────────────
   const allCars = await prisma.car.findMany({
-    select: { id: true, name: true, base_price: true },
+    select: { id: true, name: true, base_price: true, category: true },
   })
   if (allCars.length === 0) return
 
@@ -324,9 +325,9 @@ async function _startNewAuction(): Promise<void> {
   })
   if (eligibleCars.length === 0) return
 
-  const randomCar    = eligibleCars[Math.floor(Math.random() * eligibleCars.length)]
-  const variantKey   = pickRandomVariant()
-  const variantConf  = getVariant(variantKey)
+  const randomCar   = eligibleCars[Math.floor(Math.random() * eligibleCars.length)]
+  const variantKey  = randomCar.category === 'common' ? 'clean' : pickRandomVariant()
+  const variantConf = getVariant(variantKey)
 
   try {
     await prisma.$transaction(

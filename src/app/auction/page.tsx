@@ -344,8 +344,8 @@ export default function AuctionPage() {
                 </div>
                 <p className="text-gray-500 text-sm mb-2">Base Price: ${auction.car.base_price.toLocaleString()}</p>
 
-                {/* Variant badge */}
-                {(() => {
+                {/* Variant badge — hidden for common cars */}
+                {auction.car.category !== 'common' && (() => {
                   const vc = VARIANT_CONFIG[auction.variant] ?? VARIANT_CONFIG.clean
                   const atCap = auction.my_variant_count >= auction.variant_cap
                   return (

@@ -455,8 +455,8 @@ export default function GaragePage() {
                     <div className="p-4">
                       <h3 className="text-white font-bold text-base mb-1 truncate">{car.name}</h3>
 
-                      {/* Variant badge */}
-                      {(() => {
+                      {/* Variant badge — hidden for common cars */}
+                      {car.category !== 'common' && (() => {
                         const vs = VARIANT_STYLE[car.variant] ?? VARIANT_STYLE.clean
                         return (
                           <div className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-0.5 mb-3 border text-xs ${vs.bg} ${vs.border}`}>
