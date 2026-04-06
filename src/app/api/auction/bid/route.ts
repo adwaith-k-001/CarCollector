@@ -61,9 +61,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Extend the auction by 20 seconds on every bid (anti-sniping)
+    // Anti-sniping: if the timer is below 20 seconds, bump it back up to 20 seconds.
+    // Bids placed with more than 20 seconds remaining don't change the end time.
     const BID_EXTENSION_MS = 20 * 1000
-    const extendedEndTime = new Date(auction.end_time.getTime() + BID_EXTENSION_MS)
+    const now = new Date()
+    const timeLeft = auction.end_time.getTime() - now.getTime()
+    const extendedEndTime =
+      timeLeft < BID_EXTENSION_MS
+        ? new Date(now.getTime() + BID_EXTENSION_MS)
+        : auction.end_time
 
     await prisma.$transaction([
       prisma.auction.update({

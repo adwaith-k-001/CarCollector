@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
 import { getAllQuantities } from './quantityData'
 
@@ -191,17 +192,13 @@ async function _advanceAuction(): Promise<void> {
 }
 
 async function _startNewAuction(): Promise<void> {
-  // Guard: if a concurrent invocation already created an auction, do nothing.
-  const existing = await prisma.auction.findFirst({ where: { is_active: true } })
-  if (existing) return
-
+  // Pre-select the car outside the transaction (no DB writes, safe to do outside)
   const allCars = await prisma.car.findMany({
     select: { id: true, name: true, base_price: true },
   })
   if (allCars.length === 0) return
 
   const quantities = getAllQuantities()
-
   const ownershipCounts = await prisma.userCar.groupBy({
     by: ['car_id'],
     _count: { car_id: true },
@@ -211,25 +208,41 @@ async function _startNewAuction(): Promise<void> {
   const eligibleCars = allCars.filter((car) => {
     const maxQty = quantities[car.name]
     if (maxQty === undefined) return true
-    const currentCount = ownedMap.get(car.id) ?? 0
-    return currentCount < maxQty
+    return (ownedMap.get(car.id) ?? 0) < maxQty
   })
-
   if (eligibleCars.length === 0) return
 
   const randomCar = eligibleCars[Math.floor(Math.random() * eligibleCars.length)]
   const startTime = new Date()
   const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS)
 
-  await prisma.auction.create({
-    data: {
-      car_id: randomCar.id,
-      current_highest_bid: randomCar.base_price,
-      start_time: startTime,
-      end_time: endTime,
-      is_active: true,
-    },
-  })
+  try {
+    // Serializable transaction: PostgreSQL ensures only ONE concurrent caller
+    // can pass the "no active auction" check and insert. All others get a
+    // serialization error (P2034), which we catch and swallow — they lost the
+    // race and that's fine. This eliminates the phantom-auction / car-skipping bug.
+    await prisma.$transaction(
+      async (tx) => {
+        const existing = await tx.auction.findFirst({ where: { is_active: true } })
+        if (existing) return
+
+        await tx.auction.create({
+          data: {
+            car_id: randomCar.id,
+            current_highest_bid: randomCar.base_price,
+            start_time: startTime,
+            end_time: endTime,
+            is_active: true,
+          },
+        })
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    )
+  } catch (err) {
+    // P2034 = serialization conflict — another process created the auction first
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2034') return
+    throw err
+  }
 }
 
 // ─── Income Generation ───────────────────────────────────────────────────────
