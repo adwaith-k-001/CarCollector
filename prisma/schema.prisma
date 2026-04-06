@@ -22,6 +22,7 @@ model User {
   cars             UserCar[]
   bids             Bid[]
   won_auctions     Auction[] @relation("HighestBidder")
+  skip_votes       AuctionSkipVote[]
 }
 
 model Car {
@@ -51,6 +52,7 @@ model Auction {
   car                 Car      @relation(fields: [car_id], references: [id])
   highest_bidder      User?    @relation("HighestBidder", fields: [highest_bidder_id], references: [id])
   bids                Bid[]
+  skip_votes          AuctionSkipVote[]
 }
 
 model UserCar {
@@ -74,4 +76,15 @@ model Bid {
 
   auction    Auction  @relation(fields: [auction_id], references: [id])
   user       User     @relation(fields: [user_id], references: [id])
+}
+
+model AuctionSkipVote {
+  auction_id Int
+  user_id    Int
+  created_at DateTime @default(now())
+
+  auction    Auction  @relation(fields: [auction_id], references: [id])
+  user       User     @relation(fields: [user_id], references: [id])
+
+  @@id([auction_id, user_id])
 }

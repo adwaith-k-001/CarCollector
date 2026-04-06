@@ -30,11 +30,21 @@ export async function GET(req: NextRequest) {
       select: { balance: true, garage_capacity: true },
     })
 
-    // Supply info: how many of this car currently exist globally
+    // Supply info
     const globallyOwned = await prisma.userCar.count({
       where: { car_id: auction.car_id },
     })
     const maxQuantity = getMaxQuantity(auction.car.name)
+
+    // Skip vote info
+    const [skipVotes, totalUsers, mySkipVote] = await Promise.all([
+      prisma.auctionSkipVote.count({ where: { auction_id: auction.id } }),
+      prisma.user.count(),
+      prisma.auctionSkipVote.findUnique({
+        where: { auction_id_user_id: { auction_id: auction.id, user_id: user.userId } },
+      }),
+    ])
+    const skipThreshold = Math.floor(totalUsers / 2) + 1
 
     return NextResponse.json({
       auction: {
@@ -47,6 +57,9 @@ export async function GET(req: NextRequest) {
         end_time: auction.end_time,
         supply_owned: globallyOwned,
         supply_max: maxQuantity,
+        skip_votes: skipVotes,
+        skip_threshold: skipThreshold,
+        you_voted_skip: !!mySkipVote,
       },
       user_balance: dbUser?.balance ?? 0,
       garage_capacity: dbUser?.garage_capacity ?? 3,

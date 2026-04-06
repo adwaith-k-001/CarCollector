@@ -26,6 +26,9 @@ interface AuctionData {
   end_time: string
   supply_owned: number
   supply_max: number | null
+  skip_votes: number
+  skip_threshold: number
+  you_voted_skip: boolean
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -90,6 +93,7 @@ export default function AuctionPage() {
   const [bidSuccess, setBidSuccess] = useState('')
   const [loading, setLoading] = useState(true)
   const [bidding, setBidding] = useState(false)
+  const [skipping, setSkipping] = useState(false)
   const prevAuctionId = useRef<number | null>(null)
 
   const getToken = useCallback(() => {
@@ -203,6 +207,21 @@ export default function AuctionPage() {
       setBidError('Network error. Try again.')
     } finally {
       setBidding(false)
+    }
+  }
+
+  async function handleSkip() {
+    setSkipping(true)
+    try {
+      await fetch('/api/auction/skip', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+      })
+      fetchAuction()
+    } catch {
+      // Silently ignore
+    } finally {
+      setSkipping(false)
     }
   }
 
@@ -442,6 +461,38 @@ export default function AuctionPage() {
                   Bids are free to place — outbid others until the timer hits zero!
                 </p>
               </div>
+
+              {/* Skip vote */}
+              {auction && (
+                <div className="bg-[#12121e] border border-[#2a2a3e] rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-gray-500">Not interested in this car?</span>
+                    <span className="text-xs text-gray-500">
+                      {auction.skip_votes} / {auction.skip_threshold} votes to skip
+                    </span>
+                  </div>
+                  {/* Vote progress bar */}
+                  <div className="h-1 bg-[#0a0a14] rounded-full overflow-hidden mb-3">
+                    <div
+                      className="h-full bg-amber-500 rounded-full transition-all duration-300"
+                      style={{
+                        width: `${Math.min(100, Math.round((auction.skip_votes / auction.skip_threshold) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                  <button
+                    onClick={handleSkip}
+                    disabled={skipping || timeLeft === 0}
+                    className={`w-full py-2 rounded-xl text-sm font-semibold border transition-all ${
+                      auction.you_voted_skip
+                        ? 'bg-amber-500/20 border-amber-500/50 text-amber-400 hover:bg-amber-500/10'
+                        : 'bg-white/5 border-white/10 text-gray-400 hover:bg-amber-500/10 hover:border-amber-500/30 hover:text-amber-400'
+                    } disabled:opacity-40 disabled:cursor-not-allowed`}
+                  >
+                    {auction.you_voted_skip ? '✓ Voted to skip — click to undo' : 'Vote to Skip'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
