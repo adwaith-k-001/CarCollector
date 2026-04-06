@@ -33,3 +33,17 @@ export function pickRandomVariant(): VariantKey {
 }
 
 export const MAX_SAME_VARIANT = 2
+
+/**
+ * Returns the image path to serve for a car, based on variant.
+ * Performance and Clean get variant-specific images (sports + classic only).
+ * Stock and common fall back to the base image.
+ * Luxury/hyper without variant images also fall back gracefully via browser onError.
+ */
+export function getCarImagePath(carName: string, variant: string, category: string): string {
+  const base = `/cars/${encodeURIComponent(carName)}.jpg`
+  if (category === 'common' || variant === 'stock') return base
+  if (variant === 'performance') return `/cars/performance/${encodeURIComponent(carName)}.jpg`
+  if (variant === 'clean') return `/cars/clean/${encodeURIComponent(carName)}.jpg`
+  return base
+}

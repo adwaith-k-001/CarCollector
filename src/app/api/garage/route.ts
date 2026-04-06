@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
 import { advanceAuctionState } from '@/lib/auctionEngine'
 import { calculateSellValue, currentCondition, nextUpgradeCost, MAX_GARAGE_CAPACITY, nextTuneCost, tuneIncomeMultiplier } from '@/lib/depreciation'
-import { getVariant } from '@/lib/variantData'
+import { getVariant, getCarImagePath } from '@/lib/variantData'
 import { getMaxQuantity } from '@/lib/quantityData'
 
 const SELL_COOLDOWN_MS = 15 * 60 * 1000
@@ -74,6 +74,7 @@ export async function GET(req: NextRequest) {
           usercar_id:            uc.id,
           instance_key:          uc.instance_key,
           ...uc.car,
+          image_path:            getCarImagePath(uc.car.name, uc.variant, uc.car.category),
           acquired_at:           uc.acquired_at,
           purchase_time:         uc.purchase_time,
           purchase_price:        uc.purchase_price,

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
 import { advanceAuctionState } from '@/lib/auctionEngine'
 import { getMaxQuantity } from '@/lib/quantityData'
-import { getVariant, MAX_SAME_VARIANT } from '@/lib/variantData'
+import { getVariant, MAX_SAME_VARIANT, getCarImagePath } from '@/lib/variantData'
 
 export async function GET(req: NextRequest) {
   const user = getAuthUser(req)
@@ -73,7 +73,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       auction: {
         id:                  auction.id,
-        car:                 auction.car,
+        car: {
+          ...auction.car,
+          image_path: getCarImagePath(auction.car.name, auction.variant, auction.car.category),
+        },
         is_used:             auction.instance_key !== null,
         start_condition:     auction.start_condition,
         tune_stage:          auction.tune_stage,
