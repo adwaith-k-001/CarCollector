@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
 import { advanceAuctionState } from '@/lib/auctionEngine'
 import { calculateSellValue, currentCondition, nextUpgradeCost, MAX_GARAGE_CAPACITY, nextTuneCost, tuneIncomeMultiplier } from '@/lib/depreciation'
+import { getVariant } from '@/lib/variantData'
 import { getMaxQuantity } from '@/lib/quantityData'
 
 const SELL_COOLDOWN_MS = 15 * 60 * 1000
@@ -36,10 +37,11 @@ export async function GET(req: NextRequest) {
       ? Math.max(0, Math.ceil((dbUser.last_sell_time.getTime() + SELL_COOLDOWN_MS - now) / 1000))
       : 0
 
-    const totalIncomeRate = dbUser.cars.reduce(
-      (sum, uc) => sum + uc.car.income_rate * tuneIncomeMultiplier(uc.tune_stage),
-      0
-    )
+    const totalIncomeRate = dbUser.cars.reduce((sum, uc) => {
+      const v    = getVariant(uc.variant)
+      const cond = currentCondition(uc.condition, uc.purchase_time, v.decay_multiplier)
+      return sum + uc.car.income_rate * v.income_multiplier * tuneIncomeMultiplier(uc.tune_stage) * cond
+    }, 0)
 
     const uniqueCarIds = Array.from(new Set(dbUser.cars.map((uc) => uc.car_id)))
     const globalCounts = await prisma.userCar.groupBy({
@@ -60,11 +62,12 @@ export async function GET(req: NextRequest) {
       upgrade_cost: upgradeCost,
       sell_cooldown_remaining_secs: sellCooldownRemainingSecs,
       cars: dbUser.cars.map((uc) => {
-        const cond = currentCondition(uc.condition, uc.purchase_time)
-        const sellValue = calculateSellValue(uc.car.base_price, cond, uc.tune_stage)
+        const v         = getVariant(uc.variant)
+        const cond      = currentCondition(uc.condition, uc.purchase_time, v.decay_multiplier)
+        const sellValue = calculateSellValue(uc.car.base_price, cond, uc.tune_stage, v.resale_bonus)
         const globallyOwned = globalCountMap.get(uc.car_id) ?? 1
-        const maxQuantity = getMaxQuantity(uc.car.name)
-        const effectiveIncomeRate = uc.car.income_rate * tuneIncomeMultiplier(uc.tune_stage)
+        const maxQuantity   = getMaxQuantity(uc.car.name)
+        const effectiveIncomeRate = uc.car.income_rate * v.income_multiplier * tuneIncomeMultiplier(uc.tune_stage) * cond
         const tuneCost = nextTuneCost(uc.car.base_price, uc.tune_stage)
 
         return {
@@ -82,6 +85,10 @@ export async function GET(req: NextRequest) {
           tune_stage:            uc.tune_stage,
           next_tune_cost:        tuneCost,
           effective_income_rate: effectiveIncomeRate,
+          variant:               uc.variant,
+          variant_label:         v.label,
+          variant_income_mult:   v.income_multiplier,
+          variant_decay_mult:    v.decay_multiplier,
         }
       }),
     })

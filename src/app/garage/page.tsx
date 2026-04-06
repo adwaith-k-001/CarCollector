@@ -27,6 +27,10 @@ interface OwnedCar {
   tune_stage: number
   next_tune_cost: number | null
   effective_income_rate: number
+  variant: string
+  variant_label: string
+  variant_income_mult: number
+  variant_decay_mult: number
 }
 
 interface GarageData {
@@ -38,6 +42,12 @@ interface GarageData {
   upgrade_cost: number | null
   sell_cooldown_remaining_secs: number
   cars: OwnedCar[]
+}
+
+const VARIANT_STYLE: Record<string, { color: string; bg: string; border: string; decay: string }> = {
+  performance: { color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30', decay: 'Fast' },
+  clean:       { color: 'text-green-400',  bg: 'bg-green-500/10',  border: 'border-green-500/30',  decay: 'Normal' },
+  stock:       { color: 'text-blue-400',   bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   decay: 'Slow' },
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -443,7 +453,21 @@ export default function GaragePage() {
 
                     {/* Car info */}
                     <div className="p-4">
-                      <h3 className="text-white font-bold text-base mb-3 truncate">{car.name}</h3>
+                      <h3 className="text-white font-bold text-base mb-1 truncate">{car.name}</h3>
+
+                      {/* Variant badge */}
+                      {(() => {
+                        const vs = VARIANT_STYLE[car.variant] ?? VARIANT_STYLE.clean
+                        return (
+                          <div className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-0.5 mb-3 border text-xs ${vs.bg} ${vs.border}`}>
+                            <span className={`font-bold ${vs.color}`}>{car.variant_label}</span>
+                            <span className="text-gray-500">·</span>
+                            <span className="text-gray-400">{vs.decay} decay</span>
+                            <span className="text-gray-500">·</span>
+                            <span className={vs.color}>+{Math.round((car.variant_income_mult - 1) * 100)}% income</span>
+                          </div>
+                        )
+                      })()}
 
                       {/* Stats row */}
                       <div className="grid grid-cols-3 gap-2 mb-3 bg-[#0a0a14] rounded-xl p-3">

@@ -1,0 +1,23 @@
+{
+  "performance": {
+    "label": "Performance",
+    "income_multiplier": 1.35,
+    "decay_multiplier": 1.8,
+    "resale_bonus": -0.1,
+    "spawn_weight": 0.3
+  },
+  "clean": {
+    "label": "Clean",
+    "income_multiplier": 1.0,
+    "decay_multiplier": 1.0,
+    "resale_bonus": 0.0,
+    "spawn_weight": 0.4
+  },
+  "stock": {
+    "label": "Stock",
+    "income_multiplier": 0.7,
+    "decay_multiplier": 0.6,
+    "resale_bonus": 0.1,
+    "spawn_weight": 0.3
+  }
+}

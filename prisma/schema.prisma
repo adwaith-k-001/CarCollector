@@ -58,6 +58,7 @@ model Auction {
   is_active           Boolean  @default(true)
 
   tune_stage          Int      @default(0)
+  variant             String   @default("clean")
 
   car            Car      @relation(fields: [car_id], references: [id])
   highest_bidder User?    @relation("HighestBidder", fields: [highest_bidder_id], references: [id])
@@ -75,6 +76,7 @@ model UserCar {
   purchase_price Float    @default(0)
   condition      Float    @default(1.0)
   tune_stage     Int      @default(0)   // 0=stock 1=Stage1 2=Stage2 3=Stage3
+  variant        String   @default("clean") // "performance" | "clean" | "stock"
 
   user User @relation(fields: [user_id], references: [id])
   car  Car  @relation(fields: [car_id], references: [id])
@@ -87,6 +89,7 @@ model AvailableCarInstance {
   car_id       String
   condition    Float
   tune_stage   Int      @default(0)
+  variant      String   @default("clean")
   listed_at    DateTime @default(now())
 
   car Car @relation(fields: [car_id], references: [id])

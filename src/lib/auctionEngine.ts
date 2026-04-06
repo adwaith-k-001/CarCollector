@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
 import { getAllQuantities } from './quantityData'
 import { currentCondition, MIN_VALUE_RATIO, tuneIncomeMultiplier } from './depreciation'
+import { getVariant, pickRandomVariant, MAX_SAME_VARIANT } from './variantData'
 
 const AUCTION_DURATION_MS  = 60 * 1000
 const INCOME_INTERVAL_MS   = 60 * 1000
@@ -90,7 +91,8 @@ async function _junkDegradedCars(): Promise<void> {
   })
 
   for (const uc of userCars) {
-    const cond = currentCondition(uc.condition, uc.purchase_time)
+    const variant = getVariant(uc.variant)
+    const cond = currentCondition(uc.condition, uc.purchase_time, variant.decay_multiplier)
     if (cond > MIN_VALUE_RATIO) continue
 
     const instanceKey = uc.instance_key ?? randomUUID()
@@ -204,10 +206,16 @@ async function _advanceAuction(): Promise<void> {
           ? await prisma.userCar.count({ where: { car_id: freshAuction.car_id } })
           : 0
 
-      const garageOk = winner && ownedCount < winner.garage_capacity
-      const supplyOk = maxQty === undefined || supplyCount < maxQty
+      // Check variant cap (max 2 of same variant per player)
+      const variantCount = await prisma.userCar.count({
+        where: { user_id: freshAuction.highest_bidder_id, variant: freshAuction.variant },
+      })
 
-      if (garageOk && supplyOk) {
+      const garageOk  = winner && ownedCount < winner.garage_capacity
+      const supplyOk  = maxQty === undefined || supplyCount < maxQty
+      const variantOk = variantCount < MAX_SAME_VARIANT
+
+      if (garageOk && supplyOk && variantOk) {
         // Use existing instance key (used car) or mint a new one (new car)
         const instanceKey = freshAuction.instance_key ?? randomUUID()
 
@@ -221,6 +229,7 @@ async function _advanceAuction(): Promise<void> {
               purchase_price: bidAmount,
               condition:      freshAuction.start_condition,
               tune_stage:     freshAuction.tune_stage,
+              variant:        freshAuction.variant,
             },
           }),
           prisma.carHistoryEntry.create({
@@ -240,10 +249,8 @@ async function _advanceAuction(): Promise<void> {
           where: { id: freshAuction.highest_bidder_id },
           data:  { balance: { increment: bidAmount } },
         })
-        console.log(
-          `[auctionEngine] Refunded $${bidAmount} to user ${freshAuction.highest_bidder_id} ` +
-          `(${!garageOk ? 'garage full' : 'supply exhausted'})`
-        )
+        const reason = !garageOk ? 'garage full' : !supplyOk ? 'supply exhausted' : 'variant cap reached'
+        console.log(`[auctionEngine] Refunded $${bidAmount} to user ${freshAuction.highest_bidder_id} (${reason})`)
       }
     }
   }
@@ -262,7 +269,8 @@ async function _startNewAuction(): Promise<void> {
 
   if (usedPool.length > 0) {
     const pick = usedPool[Math.floor(Math.random() * usedPool.length)]
-    const startBid = Math.max(1, Math.round(pick.car.base_price * pick.condition))
+    const variant = getVariant(pick.variant)
+    const startBid = Math.max(1, Math.round(pick.car.base_price * pick.condition * (1 + variant.resale_bonus)))
 
     try {
       await prisma.$transaction(
@@ -277,6 +285,7 @@ async function _startNewAuction(): Promise<void> {
               instance_key:        pick.instance_key,
               start_condition:     pick.condition,
               tune_stage:          pick.tune_stage,
+              variant:             pick.variant,
               current_highest_bid: startBid,
               start_time:          startTime,
               end_time:            endTime,
@@ -315,7 +324,9 @@ async function _startNewAuction(): Promise<void> {
   })
   if (eligibleCars.length === 0) return
 
-  const randomCar = eligibleCars[Math.floor(Math.random() * eligibleCars.length)]
+  const randomCar    = eligibleCars[Math.floor(Math.random() * eligibleCars.length)]
+  const variantKey   = pickRandomVariant()
+  const variantConf  = getVariant(variantKey)
 
   try {
     await prisma.$transaction(
@@ -328,7 +339,9 @@ async function _startNewAuction(): Promise<void> {
             car_id:              randomCar.id,
             instance_key:        null,
             start_condition:     1.0,
-            current_highest_bid: randomCar.base_price,
+            tune_stage:          0,
+            variant:             variantKey,
+            current_highest_bid: Math.round(randomCar.base_price * (1 + variantConf.resale_bonus)),
             start_time:          startTime,
             end_time:            endTime,
             is_active:           true,
@@ -358,10 +371,15 @@ async function _generateIncome(): Promise<void> {
     const cycles  = Math.floor(elapsed / INCOME_INTERVAL_MS)
     if (cycles === 0) continue
 
-    const incomePerCycle  = user.cars.reduce(
-      (sum, uc) => sum + uc.car.income_rate * tuneIncomeMultiplier(uc.tune_stage),
-      0
-    )
+    const incomePerCycle = user.cars.reduce((sum, uc) => {
+      const variant  = getVariant(uc.variant)
+      const cond     = currentCondition(uc.condition, uc.purchase_time, variant.decay_multiplier)
+      const income   = uc.car.income_rate
+                     * variant.income_multiplier
+                     * tuneIncomeMultiplier(uc.tune_stage)
+                     * cond
+      return sum + income
+    }, 0)
     const totalIncome     = incomePerCycle * cycles
     const newLastIncome   = new Date(user.last_income_time.getTime() + cycles * INCOME_INTERVAL_MS)
 

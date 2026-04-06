@@ -30,6 +30,13 @@ interface AuctionData {
   is_used: boolean
   start_condition: number
   tune_stage: number
+  variant: string
+  variant_label: string
+  variant_income_mult: number
+  variant_decay_mult: number
+  variant_resale_bonus: number
+  my_variant_count: number
+  variant_cap: number
   current_highest_bid: number
   highest_bidder: string | null
   is_you_winning: boolean
@@ -42,6 +49,12 @@ interface AuctionData {
   online_users: number
   you_voted_skip: boolean
   car_history: CarHistoryEntry[]
+}
+
+const VARIANT_CONFIG: Record<string, { color: string; bg: string; border: string; decay: string }> = {
+  performance: { color: 'text-orange-400', bg: 'bg-orange-500/15', border: 'border-orange-500/40', decay: 'Fast decay' },
+  clean:       { color: 'text-green-400',  bg: 'bg-green-500/15',  border: 'border-green-500/40',  decay: 'Normal decay' },
+  stock:       { color: 'text-blue-400',   bg: 'bg-blue-500/15',   border: 'border-blue-500/40',   decay: 'Slow decay' },
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -329,7 +342,35 @@ export default function AuctionPage() {
                   <h2 className="text-2xl font-bold text-white">{auction.car.name}</h2>
                   <SupplyBadge owned={auction.supply_owned} max={auction.supply_max} />
                 </div>
-                <p className="text-gray-500 text-sm mb-3">Base Price: ${auction.car.base_price.toLocaleString()}</p>
+                <p className="text-gray-500 text-sm mb-2">Base Price: ${auction.car.base_price.toLocaleString()}</p>
+
+                {/* Variant badge */}
+                {(() => {
+                  const vc = VARIANT_CONFIG[auction.variant] ?? VARIANT_CONFIG.clean
+                  const atCap = auction.my_variant_count >= auction.variant_cap
+                  return (
+                    <div className={`flex flex-wrap items-center gap-2 mb-3 p-2.5 rounded-xl border ${vc.bg} ${vc.border}`}>
+                      <span className={`font-bold text-sm ${vc.color}`}>{auction.variant_label}</span>
+                      <span className="text-gray-400 text-xs">·</span>
+                      <span className="text-gray-300 text-xs">+{Math.round((auction.variant_income_mult - 1) * 100)}% income</span>
+                      <span className="text-gray-400 text-xs">·</span>
+                      <span className="text-gray-400 text-xs">{vc.decay}</span>
+                      {auction.variant_resale_bonus !== 0 && (
+                        <>
+                          <span className="text-gray-400 text-xs">·</span>
+                          <span className={`text-xs ${auction.variant_resale_bonus > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {auction.variant_resale_bonus > 0 ? '+' : ''}{Math.round(auction.variant_resale_bonus * 100)}% resale
+                          </span>
+                        </>
+                      )}
+                      {atCap && (
+                        <span className="ml-auto text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/30 rounded-full px-2 py-0.5">
+                          Variant cap reached ({auction.my_variant_count}/{auction.variant_cap})
+                        </span>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 {/* Condition bar */}
                 {(() => {
@@ -364,9 +405,9 @@ export default function AuctionPage() {
                 </div>
 
                 {auction.tune_stage > 0 && (
-                  <div className="mt-2 flex items-center gap-2 bg-blue-500/5 border border-blue-500/20 rounded-xl px-4 py-3">
-                    <span className="text-blue-400 font-bold text-sm">Stage {auction.tune_stage}</span>
-                    <span className="text-gray-400 text-xs">tune — +{[0, 10, 25, 45][auction.tune_stage]}% income boost</span>
+                  <div className="mt-2 flex items-center gap-2 bg-blue-500/5 border border-blue-500/20 rounded-xl px-4 py-2">
+                    <span className="text-blue-400 font-bold text-sm">Tune Stage {auction.tune_stage}</span>
+                    <span className="text-gray-400 text-xs">+{[0, 10, 25, 45][auction.tune_stage]}% income</span>
                   </div>
                 )}
 

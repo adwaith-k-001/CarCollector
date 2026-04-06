@@ -6,16 +6,23 @@
  *
  * k = ln(5) / 168 ≈ 0.00958  →  a brand-new car (condition 1.0) hits 20% at exactly 7 days.
  */
-export const DECAY_RATE = Math.log(5) / 168   // ≈ 0.00958
+export const BASE_DECAY_RATE = Math.log(5) / 168  // ≈ 0.00958 per hour (clean baseline: 100%→20% in 7 days)
+/** @deprecated use BASE_DECAY_RATE */
+export const DECAY_RATE = BASE_DECAY_RATE
 export const MIN_VALUE_RATIO = 0.20
 
 /**
- * Current effective condition for a car given its stored condition and when the
- * current owner acquired it.  Returns a value in [MIN_VALUE_RATIO, 1.0].
+ * Current effective condition for a car.
+ * decayMultiplier: 1.0 = clean (7 days), 1.8 = performance (3.9 days), 0.6 = stock (11.7 days)
  */
-export function currentCondition(storedCondition: number, purchaseTime: Date): number {
+export function currentCondition(
+  storedCondition: number,
+  purchaseTime: Date,
+  decayMultiplier: number = 1.0
+): number {
   const hoursOwned = Math.max(0, (Date.now() - purchaseTime.getTime()) / (1000 * 60 * 60))
-  const decayed = storedCondition * Math.exp(-DECAY_RATE * hoursOwned)
+  const k = BASE_DECAY_RATE * decayMultiplier
+  const decayed = storedCondition * Math.exp(-k * hoursOwned)
   return Math.max(MIN_VALUE_RATIO, decayed)
 }
 
@@ -46,16 +53,16 @@ export function tuneIncomeMultiplier(stage: number): number {
 }
 
 /**
- * Sell value = base_price × currentCond + 75% of total tune cost invested.
- * Pass the already-computed currentCondition value so sell price matches
- * exactly what is displayed in the UI.
+ * Sell value = base_price × condition × (1 + resaleBonus) + 75% of tune cost.
+ * resaleBonus: +0.1 for stock, 0 for clean, -0.1 for performance.
  */
 export function calculateSellValue(
   basePrice: number,
   currentCond: number,
-  tuneStage: number = 0
+  tuneStage: number = 0,
+  resaleBonus: number = 0
 ): number {
-  const condValue = Math.round(basePrice * currentCond)
+  const condValue = Math.round(basePrice * currentCond * (1 + resaleBonus))
   const tuneResidual = Math.round(basePrice * totalTuneCostFraction(tuneStage) * 0.75)
   return condValue + tuneResidual
 }
