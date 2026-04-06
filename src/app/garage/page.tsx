@@ -464,7 +464,7 @@ export default function GaragePage() {
                             <span className="text-gray-500">·</span>
                             <span className="text-gray-400">{vs.decay} decay</span>
                             <span className="text-gray-500">·</span>
-                            <span className={vs.color}>+{Math.round((car.variant_income_mult - 1) * 100)}% income</span>
+                            <span className={vs.color}>{Math.round((car.variant_income_mult - 1) * 100) > 0 ? '+' : ''}{Math.round((car.variant_income_mult - 1) * 100)}% income</span>
                           </div>
                         )
                       })()}

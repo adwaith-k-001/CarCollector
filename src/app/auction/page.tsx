@@ -349,7 +349,7 @@ export default function AuctionPage() {
                     <div className={`flex flex-wrap items-center gap-2 mb-3 p-2.5 rounded-xl border ${vc.bg} ${vc.border}`}>
                       <span className={`font-bold text-sm ${vc.color}`}>{auction.variant_label}</span>
                       <span className="text-gray-400 text-xs">·</span>
-                      <span className="text-gray-300 text-xs">+{Math.round((auction.variant_income_mult - 1) * 100)}% income</span>
+                      <span className="text-gray-300 text-xs">{Math.round((auction.variant_income_mult - 1) * 100) > 0 ? '+' : ''}{Math.round((auction.variant_income_mult - 1) * 100)}% income</span>
                       <span className="text-gray-400 text-xs">·</span>
                       <span className="text-gray-400 text-xs">{vc.decay}</span>
                       {auction.variant_resale_bonus !== 0 && (
