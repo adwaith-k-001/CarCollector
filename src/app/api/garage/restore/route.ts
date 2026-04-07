@@ -36,35 +36,32 @@ export async function POST(req: NextRequest) {
   const restoreTarget = nextRestoreTarget(userCar.restore_count)!
   const restoreCost   = nextRestoreCost(userCar.car.base_price, userCar.restore_count)!
 
-  // Check balance
-  const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { balance: true } })
-  if (!dbUser || dbUser.balance < restoreCost) {
+  // Apply max logic: never decrease condition from restoring
+  const newCondition = Math.max(cond, restoreTarget)
+
+  // Deduct cost atomically — returns 0 if insufficient balance
+  const deducted: number = await prisma.$executeRaw`
+    UPDATE "User"
+    SET    balance = balance - ${restoreCost}
+    WHERE  id      = ${user.userId}
+      AND  balance >= ${restoreCost}
+  `
+
+  if (deducted === 0) {
     return NextResponse.json(
       { error: `Insufficient balance. Restoration costs $${restoreCost.toLocaleString()}` },
       { status: 400 }
     )
   }
 
-  // Apply max logic: never decrease condition from restoring
-  const newCondition = Math.max(cond, restoreTarget)
-
-  await prisma.$transaction([
-    // Deduct cost
-    prisma.user.update({
-      where: { id: user.userId },
-      data:  { balance: { decrement: restoreCost } },
-    }),
-    // Update car: set condition to newCondition, reset purchase_time so decay starts fresh,
-    // increment restore_count
-    prisma.userCar.update({
-      where: { id: userCar.id },
-      data: {
-        condition:     newCondition,
-        purchase_time: new Date(),
-        restore_count: { increment: 1 },
-      },
-    }),
-  ])
+  await prisma.userCar.update({
+    where: { id: userCar.id },
+    data: {
+      condition:     newCondition,
+      purchase_time: new Date(),
+      restore_count: { increment: 1 },
+    },
+  })
 
   return NextResponse.json({
     success:       true,

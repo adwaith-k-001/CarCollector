@@ -634,6 +634,7 @@ export default function TradePage() {
   const router = useRouter()
   const [token, setToken]       = useState('')
   const [username, setUsername] = useState('')
+  const [balance, setBalance]   = useState(0)
   const [tab, setTab]           = useState<'browse' | 'offers'>('browse')
   const [message, setMessage]   = useState<{ text: string; ok: boolean } | null>(null)
 
@@ -644,6 +645,23 @@ export default function TradePage() {
     setToken(t)
     setUsername(u)
   }, [router])
+
+  // Fetch balance periodically
+  useEffect(() => {
+    if (!token) return
+    const fetchBalance = async () => {
+      try {
+        const res = await fetch('/api/user/balance', { headers: { Authorization: `Bearer ${token}` } })
+        if (res.ok) {
+          const data = await res.json()
+          setBalance(data.balance ?? 0)
+        }
+      } catch { /* silently retry */ }
+    }
+    fetchBalance()
+    const id = setInterval(fetchBalance, 5000)
+    return () => clearInterval(id)
+  }, [token])
 
   useEffect(() => {
     if (!message) return
@@ -667,7 +685,7 @@ export default function TradePage() {
 
   return (
     <div className="min-h-screen bg-[#0d0d1a] text-white">
-      <NavBar activePage="trade" username={username} onLogout={handleLogout} />
+      <NavBar activePage="trade" username={username} balance={balance} onLogout={handleLogout} />
 
       {/* Toast */}
       {message && (

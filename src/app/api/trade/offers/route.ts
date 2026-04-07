@@ -5,6 +5,18 @@ import { getVariant, getCarImagePath } from '@/lib/variantData'
 import { currentCondition } from '@/lib/depreciation'
 import { calculateMarketValue, minimumOfferPrice } from '@/lib/tradeEngine'
 
+type CarRow = {
+  id: string; name: string; category: string; base_price: number
+  speed: number; style: number; reliability: number; income_rate: number; image_path: string
+}
+
+type AnyOffer = {
+  id: number; instance_key: string; car_id: string; offer_price: number
+  status: string; is_counter: boolean; expires_at: Date; created_at: Date
+  from_user_id: number; to_user_id: number; car: CarRow
+  from_user?: { username: string }; to_user?: { username: string }
+}
+
 /** GET /api/trade/offers — returns sent + received pending offers for the current user. */
 export async function GET(req: NextRequest) {
   const user = getAuthUser(req)
@@ -18,31 +30,31 @@ export async function GET(req: NextRequest) {
 
   const [sent, received] = await Promise.all([
     prisma.tradeOffer.findMany({
-      where: { from_user_id: user.userId, status: 'pending' },
-      include: {
-        to_user:  { select: { username: true } },
-        car:      true,
-      },
+      where:   { from_user_id: user.userId, status: 'pending' },
+      include: { to_user: { select: { username: true } }, car: true },
       orderBy: { created_at: 'desc' },
     }),
     prisma.tradeOffer.findMany({
-      where: { to_user_id: user.userId, status: 'pending' },
-      include: {
-        from_user: { select: { username: true } },
-        car:       true,
-      },
+      where:   { to_user_id: user.userId, status: 'pending' },
+      include: { from_user: { select: { username: true } }, car: true },
       orderBy: { created_at: 'desc' },
     }),
   ])
 
-  type AnyOffer = { id: number; instance_key: string; car_id: string; offer_price: number; status: string; is_counter: boolean; expires_at: Date; created_at: Date; from_user_id: number; to_user_id: number; car: { id: string; name: string; category: string; base_price: number; speed: number; style: number; reliability: number; income_rate: number; image_path: string }; from_user?: { username: string }; to_user?: { username: string } }
+  const allOffers = [...sent, ...received] as AnyOffer[]
+  const instanceKeys = allOffers.map((o) => o.instance_key)
 
-  // Enrich offers with live car info
-  async function enrich(offer: AnyOffer) {
-    const ownerCar = await prisma.userCar.findFirst({
-      where: { instance_key: offer.instance_key },
-      select: { condition: true, purchase_time: true, tune_stage: true, variant: true },
-    })
+  // Batch-fetch all owner car data in one query
+  const ownerCars = instanceKeys.length > 0
+    ? await prisma.userCar.findMany({
+        where:  { instance_key: { in: instanceKeys } },
+        select: { instance_key: true, condition: true, purchase_time: true, tune_stage: true, variant: true },
+      })
+    : []
+  const ownerCarMap = new Map(ownerCars.map((oc) => [oc.instance_key, oc]))
+
+  function enrich(offer: AnyOffer) {
+    const ownerCar  = ownerCarMap.get(offer.instance_key)
     const v         = getVariant(ownerCar?.variant ?? 'clean')
     const cond      = ownerCar
       ? currentCondition(ownerCar.condition, ownerCar.purchase_time, v.decay_multiplier)
@@ -54,10 +66,7 @@ export async function GET(req: NextRequest) {
     return {
       id:           offer.id,
       instance_key: offer.instance_key,
-      car: {
-        ...offer.car,
-        image_path: imagePath,
-      },
+      car:          { ...offer.car, image_path: imagePath },
       variant:       ownerCar?.variant ?? 'clean',
       tune_stage:    ownerCar?.tune_stage ?? 0,
       condition:     cond,
@@ -68,15 +77,13 @@ export async function GET(req: NextRequest) {
       is_counter:    offer.is_counter,
       expires_at:    offer.expires_at,
       created_at:    offer.created_at,
-      from_username: (offer as { from_user?: { username: string } }).from_user?.username ?? null,
-      to_username:   (offer as { to_user?: { username: string } }).to_user?.username ?? null,
+      from_username: offer.from_user?.username ?? null,
+      to_username:   offer.to_user?.username ?? null,
     }
   }
 
-  const [sentEnriched, receivedEnriched] = await Promise.all([
-    Promise.all(sent.map((o) => enrich(o as AnyOffer))),
-    Promise.all(received.map((o) => enrich(o as AnyOffer))),
-  ])
-
-  return NextResponse.json({ sent: sentEnriched, received: receivedEnriched })
+  return NextResponse.json({
+    sent:     sent.map((o) => enrich(o as AnyOffer)),
+    received: received.map((o) => enrich(o as AnyOffer)),
+  })
 }

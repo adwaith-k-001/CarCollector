@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
 import { getAllQuantities } from './quantityData'
 import { currentCondition, MIN_VALUE_RATIO, tuneIncomeMultiplier, incomeConditionMultiplier } from './depreciation'
-import { getVariant, pickRandomVariant, MAX_SAME_VARIANT } from './variantData'
+import { getVariant, pickRandomVariant } from './variantData'
 
 const AUCTION_DURATION_MS  = 60 * 1000
 const INCOME_INTERVAL_MS   = 60 * 1000

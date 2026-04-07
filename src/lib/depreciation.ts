@@ -7,8 +7,6 @@
  * k = ln(5) / 168 ≈ 0.00958  →  a brand-new car (condition 1.0) hits 20% at exactly 7 days.
  */
 export const BASE_DECAY_RATE = Math.log(5) / 168  // ≈ 0.00958 per hour (clean baseline: 100%→20% in 7 days)
-/** @deprecated use BASE_DECAY_RATE */
-export const DECAY_RATE = BASE_DECAY_RATE
 export const MIN_VALUE_RATIO = 0.20
 
 /**
