@@ -93,6 +93,7 @@ export default function GaragePage() {
   const [loading, setLoading] = useState(true)
   const [sellingId, setSellingId] = useState<number | null>(null)
   const [sellMessage, setSellMessage] = useState<{ text: string; ok: boolean } | null>(null)
+  const [confirmSell, setConfirmSell] = useState<{ userCarId: number; name: string; sellValue: number } | null>(null)
   const [upgrading, setUpgrading] = useState(false)
   const [upgradeMessage, setUpgradeMessage] = useState<{ text: string; ok: boolean } | null>(null)
   const [sellCooldown, setSellCooldown] = useState(0) // seconds remaining
@@ -267,6 +268,37 @@ export default function GaragePage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a14]">
+      {/* Sell confirmation modal */}
+      {confirmSell && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="bg-[#12121f] border border-[#2a2a3e] rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
+            <h3 className="text-lg font-bold text-white mb-1">Confirm Sale</h3>
+            <p className="text-sm text-gray-400 mb-4">
+              Are you sure you want to sell <span className="text-white font-semibold">{confirmSell.name}</span>?
+            </p>
+            <div className="flex justify-between text-sm mb-6">
+              <span className="text-gray-500">You will receive</span>
+              <span className="text-amber-400 font-bold">${confirmSell.sellValue.toLocaleString()}</span>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">Note: you cannot immediately rebuy this car if it appears at auction.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmSell(null)}
+                className="flex-1 py-2 rounded-lg border border-[#2a2a3e] text-gray-400 hover:text-white text-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { handleSell(confirmSell.userCarId, confirmSell.name); setConfirmSell(null) }}
+                className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-sm transition-colors"
+              >
+                Sell
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navbar */}
       <nav className="border-b border-[#2a2a3e] bg-[#0d0d1a]/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -543,7 +575,7 @@ export default function GaragePage() {
 
                       {/* Sell button */}
                       <button
-                        onClick={() => handleSell(car.usercar_id, car.name)}
+                        onClick={() => setConfirmSell({ userCarId: car.usercar_id, name: car.name, sellValue: car.sell_value })}
                         disabled={isSelling || sellCooldown > 0}
                         className="w-full bg-red-500/10 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed border border-red-500/30 hover:border-red-500/50 text-red-400 text-xs font-semibold py-2 rounded-lg transition-all"
                       >

@@ -102,11 +102,12 @@ export async function POST(req: NextRequest) {
       prisma.userCar.delete({ where: { id: userCarId } }),
       prisma.availableCarInstance.create({
         data: {
-          instance_key: instanceKey,
-          car_id:       userCar.car_id,
-          condition:    cond,
-          tune_stage:   userCar.tune_stage,
-          variant:      userCar.variant,
+          instance_key:   instanceKey,
+          car_id:         userCar.car_id,
+          condition:      cond,
+          tune_stage:     userCar.tune_stage,
+          variant:        userCar.variant,
+          last_seller_id: user.userId,
         },
       }),
       prisma.carHistoryEntry.create({

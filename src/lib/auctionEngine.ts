@@ -210,10 +210,11 @@ async function _advanceAuction(): Promise<void> {
           ? await prisma.userCar.count({ where: { car_id: freshAuction.car_id } })
           : 0
 
-      const garageOk = winner && ownedCount < winner.garage_capacity
-      const supplyOk = maxQty === undefined || supplyCount < maxQty
+      const garageOk  = winner && ownedCount < winner.garage_capacity
+      const supplyOk  = maxQty === undefined || supplyCount < maxQty
+      const sellerOk  = freshAuction.last_seller_id !== freshAuction.highest_bidder_id
 
-      if (garageOk && supplyOk) {
+      if (garageOk && supplyOk && sellerOk) {
         // Use existing instance key (used car) or mint a new one (new car)
         const instanceKey = freshAuction.instance_key ?? randomUUID()
 
@@ -247,7 +248,7 @@ async function _advanceAuction(): Promise<void> {
           where: { id: freshAuction.highest_bidder_id },
           data:  { balance: { increment: bidAmount } },
         })
-        const reason = !garageOk ? 'garage full' : 'supply exhausted'
+        const reason = !garageOk ? 'garage full' : !supplyOk ? 'supply exhausted' : 'seller cannot immediately rebuy'
         console.log(`[auctionEngine] Refunded $${bidAmount} to user ${freshAuction.highest_bidder_id} (${reason})`)
       }
     }
@@ -285,6 +286,7 @@ async function _startNewAuction(): Promise<void> {
               start_condition:     pick.condition,
               tune_stage:          pick.tune_stage,
               variant:             effectiveVariant,
+              last_seller_id:      pick.last_seller_id ?? null,
               current_highest_bid: startBid,
               start_time:          startTime,
               end_time:            endTime,

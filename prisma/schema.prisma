@@ -62,6 +62,7 @@ model Auction {
 
   tune_stage          Int      @default(0)
   variant             String   @default("clean")
+  last_seller_id      Int?     // if set, this user cannot win this auction
 
   car            Car      @relation(fields: [car_id], references: [id])
   highest_bidder User?    @relation("HighestBidder", fields: [highest_bidder_id], references: [id])
@@ -87,13 +88,14 @@ model UserCar {
 
 // Cars sold by players, waiting to be re-auctioned
 model AvailableCarInstance {
-  id           Int      @id @default(autoincrement())
-  instance_key String   @unique
-  car_id       String
-  condition    Float
-  tune_stage   Int      @default(0)
-  variant      String   @default("clean")
-  listed_at    DateTime @default(now())
+  id             Int      @id @default(autoincrement())
+  instance_key   String   @unique
+  car_id         String
+  condition      Float
+  tune_stage     Int      @default(0)
+  variant        String   @default("clean")
+  last_seller_id Int?     // prevents the seller from immediately buying it back
+  listed_at      DateTime @default(now())
 
   car Car @relation(fields: [car_id], references: [id])
 }
