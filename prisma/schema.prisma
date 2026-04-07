@@ -41,6 +41,7 @@ model Car {
   reliability  Int
   income_rate  Float
   image_path   String
+  is_active    Boolean @default(false) // only active cars enter auctions; set true once image exists
 
   user_cars           UserCar[]
   auctions            Auction[]

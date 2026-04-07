@@ -264,6 +264,7 @@ async function _startNewAuction(): Promise<void> {
 
   // ── Prefer used cars from the resale pool ────────────────────────────────
   const usedPool = await prisma.availableCarInstance.findMany({
+    where: { car: { is_active: true } },
     include: { car: { select: { id: true, name: true, base_price: true, category: true } } },
   })
 
@@ -307,6 +308,7 @@ async function _startNewAuction(): Promise<void> {
 
   // ── No used cars — pick a new car ────────────────────────────────────────
   const allCars = await prisma.car.findMany({
+    where: { is_active: true },
     select: { id: true, name: true, base_price: true, category: true },
   })
   if (allCars.length === 0) return
