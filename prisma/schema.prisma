@@ -62,6 +62,7 @@ model Auction {
 
   tune_stage          Int      @default(0)
   variant             String   @default("clean")
+  restore_count       Int      @default(0)
   last_seller_id      Int?     // if set, this user cannot win this auction
 
   car            Car      @relation(fields: [car_id], references: [id])
@@ -81,6 +82,7 @@ model UserCar {
   condition      Float    @default(1.0)
   tune_stage     Int      @default(0)   // 0=stock 1=Stage1 2=Stage2 3=Stage3
   variant        String   @default("clean") // "performance" | "clean" | "stock"
+  restore_count  Int      @default(0)   // 0–4; persists across ownership
 
   user User @relation(fields: [user_id], references: [id])
   car  Car  @relation(fields: [car_id], references: [id])
@@ -94,6 +96,7 @@ model AvailableCarInstance {
   condition      Float
   tune_stage     Int      @default(0)
   variant        String   @default("clean")
+  restore_count  Int      @default(0)
   last_seller_id Int?     // prevents the seller from immediately buying it back
   listed_at      DateTime @default(now())
 

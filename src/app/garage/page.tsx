@@ -31,6 +31,10 @@ interface OwnedCar {
   variant_label: string
   variant_income_mult: number
   variant_decay_mult: number
+  restore_count: number
+  restore_target: number | null
+  restore_cost: number | null
+  max_restores: number
 }
 
 interface GarageData {
@@ -99,6 +103,8 @@ export default function GaragePage() {
   const [sellCooldown, setSellCooldown] = useState(0) // seconds remaining
   const [tuningId, setTuningId] = useState<number | null>(null)
   const [tuneMessage, setTuneMessage] = useState<{ text: string; ok: boolean } | null>(null)
+  const [restoringId, setRestoringId] = useState<number | null>(null)
+  const [restoreMessage, setRestoreMessage] = useState<{ text: string; ok: boolean } | null>(null)
 
   const getToken = useCallback(() => localStorage.getItem('token'), [])
 
@@ -246,6 +252,36 @@ export default function GaragePage() {
     }
   }
 
+  async function handleRestore(userCarId: number, carName: string) {
+    setRestoreMessage(null)
+    setRestoringId(userCarId)
+    try {
+      const res = await fetch('/api/garage/restore', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({ userCarId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setRestoreMessage({ text: data.error || 'Restore failed', ok: false })
+      } else {
+        setRestoreMessage({
+          text: `${carName} restored to ${Math.round(data.new_condition * 100)}% condition! Cost: $${data.cost.toLocaleString()}`,
+          ok: true,
+        })
+        fetchGarage()
+      }
+    } catch {
+      setRestoreMessage({ text: 'Network error. Try again.', ok: false })
+    } finally {
+      setRestoringId(null)
+      setTimeout(() => setRestoreMessage(null), 4000)
+    }
+  }
+
   async function handleLogout() {
     await callLogoutAPI()
     clearAuthStorage()
@@ -364,6 +400,15 @@ export default function GaragePage() {
               : 'bg-red-500/10 border-red-500/30 text-red-400'
           }`}>
             {tuneMessage.text}
+          </div>
+        )}
+        {restoreMessage && (
+          <div className={`mb-4 rounded-xl px-4 py-3 text-sm font-medium border ${
+            restoreMessage.ok
+              ? 'bg-teal-500/10 border-teal-500/30 text-teal-400'
+              : 'bg-red-500/10 border-red-500/30 text-red-400'
+          }`}>
+            {restoreMessage.text}
           </div>
         )}
 
@@ -560,6 +605,23 @@ export default function GaragePage() {
                             ? 'Tuning...'
                             : `Tune to Stage ${car.tune_stage + 1} — $${(car.next_tune_cost ?? 0).toLocaleString()}`}
                         </button>
+                      )}
+
+                      {/* Workshop restore button */}
+                      {car.restore_target !== null ? (
+                        <button
+                          onClick={() => handleRestore(car.usercar_id, car.name)}
+                          disabled={restoringId === car.usercar_id || balance < (car.restore_cost ?? 0)}
+                          className="w-full bg-teal-500/10 hover:bg-teal-500/20 disabled:opacity-40 disabled:cursor-not-allowed border border-teal-500/30 hover:border-teal-500/50 text-teal-400 text-xs font-semibold py-2 rounded-lg transition-all mb-2"
+                        >
+                          {restoringId === car.usercar_id
+                            ? 'Restoring...'
+                            : `Workshop: Restore to ${Math.round(car.restore_target * 100)}% — $${(car.restore_cost ?? 0).toLocaleString()} (${car.restore_count + 1}/4)`}
+                        </button>
+                      ) : (
+                        <div className="w-full text-center text-xs text-gray-600 py-1.5 mb-2">
+                          Workshop: Max restorations used (4/4)
+                        </div>
                       )}
 
                       {/* Sell value */}

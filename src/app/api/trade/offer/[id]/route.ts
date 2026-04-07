@@ -132,6 +132,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         condition:      cond,
         tune_stage:     sellerCar.tune_stage,
         variant:        sellerCar.variant,
+        restore_count:  sellerCar.restore_count,
       },
     })
 

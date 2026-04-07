@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
 import { advanceAuctionState } from '@/lib/auctionEngine'
-import { calculateSellValue, currentCondition, nextUpgradeCost, MAX_GARAGE_CAPACITY, nextTuneCost, tuneIncomeMultiplier } from '@/lib/depreciation'
+import { calculateSellValue, currentCondition, nextUpgradeCost, MAX_GARAGE_CAPACITY, nextTuneCost, tuneIncomeMultiplier, incomeConditionMultiplier, nextRestoreTarget, nextRestoreCost, MAX_RESTORES } from '@/lib/depreciation'
 import { getVariant, getCarImagePath } from '@/lib/variantData'
 import { getMaxQuantity } from '@/lib/quantityData'
 
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     const totalIncomeRate = dbUser.cars.reduce((sum, uc) => {
       const v    = getVariant(uc.variant)
       const cond = currentCondition(uc.condition, uc.purchase_time, v.decay_multiplier)
-      return sum + uc.car.income_rate * v.income_multiplier * tuneIncomeMultiplier(uc.tune_stage) * cond
+      return sum + uc.car.income_rate * v.income_multiplier * tuneIncomeMultiplier(uc.tune_stage) * incomeConditionMultiplier(cond)
     }, 0)
 
     const uniqueCarIds = Array.from(new Set(dbUser.cars.map((uc) => uc.car_id)))
@@ -67,8 +67,10 @@ export async function GET(req: NextRequest) {
         const sellValue = calculateSellValue(uc.car.base_price, cond, uc.tune_stage, v.resale_bonus)
         const globallyOwned = globalCountMap.get(uc.car_id) ?? 1
         const maxQuantity   = getMaxQuantity(uc.car.name)
-        const effectiveIncomeRate = uc.car.income_rate * v.income_multiplier * tuneIncomeMultiplier(uc.tune_stage) * cond
-        const tuneCost = nextTuneCost(uc.car.base_price, uc.tune_stage)
+        const tuneCost      = nextTuneCost(uc.car.base_price, uc.tune_stage)
+        const restoreTarget = nextRestoreTarget(uc.restore_count)
+        const restoreCost   = nextRestoreCost(uc.car.base_price, uc.restore_count)
+        const effectiveIncomeRate = uc.car.income_rate * v.income_multiplier * tuneIncomeMultiplier(uc.tune_stage) * incomeConditionMultiplier(cond)
 
         return {
           usercar_id:            uc.id,
@@ -90,6 +92,10 @@ export async function GET(req: NextRequest) {
           variant_label:         v.label,
           variant_income_mult:   v.income_multiplier,
           variant_decay_mult:    v.decay_multiplier,
+          restore_count:         uc.restore_count,
+          restore_target:        restoreTarget,
+          restore_cost:          restoreCost,
+          max_restores:          MAX_RESTORES,
         }
       }),
     })

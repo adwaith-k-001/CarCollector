@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
 import { getAllQuantities } from './quantityData'
-import { currentCondition, MIN_VALUE_RATIO, tuneIncomeMultiplier } from './depreciation'
+import { currentCondition, MIN_VALUE_RATIO, tuneIncomeMultiplier, incomeConditionMultiplier } from './depreciation'
 import { getVariant, pickRandomVariant, MAX_SAME_VARIANT } from './variantData'
 
 const AUCTION_DURATION_MS  = 60 * 1000
@@ -229,6 +229,7 @@ async function _advanceAuction(): Promise<void> {
               condition:      freshAuction.start_condition,
               tune_stage:     freshAuction.tune_stage,
               variant:        freshAuction.variant,
+              restore_count:  freshAuction.restore_count,
             },
           }),
           prisma.carHistoryEntry.create({
@@ -286,6 +287,7 @@ async function _startNewAuction(): Promise<void> {
               start_condition:     pick.condition,
               tune_stage:          pick.tune_stage,
               variant:             effectiveVariant,
+              restore_count:       pick.restore_count,
               last_seller_id:      pick.last_seller_id ?? null,
               current_highest_bid: startBid,
               start_time:          startTime,
@@ -378,7 +380,7 @@ async function _generateIncome(): Promise<void> {
       const income   = uc.car.income_rate
                      * variant.income_multiplier
                      * tuneIncomeMultiplier(uc.tune_stage)
-                     * cond
+                     * incomeConditionMultiplier(cond)
       return sum + income
     }, 0)
     const totalIncome     = incomePerCycle * cycles

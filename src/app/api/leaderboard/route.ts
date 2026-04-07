@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
-import { calculateSellValue, currentCondition, totalGarageUpgradeCost, tuneIncomeMultiplier } from '@/lib/depreciation'
+import { calculateSellValue, currentCondition, totalGarageUpgradeCost, tuneIncomeMultiplier, incomeConditionMultiplier } from '@/lib/depreciation'
 import { getVariant } from '@/lib/variantData'
 
 export async function GET(req: NextRequest) {
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
           total_income_rate: u.cars.reduce((sum, uc) => {
             const v    = getVariant(uc.variant)
             const cond = currentCondition(uc.condition, uc.purchase_time, v.decay_multiplier)
-            return sum + uc.car.income_rate * v.income_multiplier * tuneIncomeMultiplier(uc.tune_stage) * cond
+            return sum + uc.car.income_rate * v.income_multiplier * tuneIncomeMultiplier(uc.tune_stage) * incomeConditionMultiplier(cond)
           }, 0),
           cars: u.cars.map((uc) => ({ name: uc.car.name, category: uc.car.category })),
         }

@@ -67,6 +67,46 @@ export function calculateSellValue(
   return condValue + tuneResidual
 }
 
+// ─── Income Step Multiplier ──────────────────────────────────────────────────
+
+/**
+ * Step-based income multiplier based on current condition.
+ * Replaces continuous (condition) scaling for income calculations only.
+ * Sell value and decay are NOT affected.
+ */
+export function incomeConditionMultiplier(condition: number): number {
+  if (condition >= 0.80) return 1.0
+  if (condition >= 0.60) return 0.8
+  if (condition >= 0.40) return 0.6
+  return 0.4  // ≥ 0.20 (floor)
+}
+
+// ─── Workshop (Restoration) ──────────────────────────────────────────────────
+
+export const MAX_RESTORES = 4
+
+/** Condition target for each restore (1st–4th). */
+const RESTORE_TARGETS = [0.90, 0.80, 0.70, 0.60]
+
+/** Cost as a fraction of base_price for each restore. */
+const RESTORE_COST_FRACTIONS = [0.07, 0.12, 0.17, 0.22]
+
+/**
+ * Condition the car will be set to after the next restore.
+ * Returns null if max restores reached.
+ */
+export function nextRestoreTarget(restoreCount: number): number | null {
+  return restoreCount < MAX_RESTORES ? RESTORE_TARGETS[restoreCount] : null
+}
+
+/**
+ * Dollar cost of the next restore, or null if max restores reached.
+ */
+export function nextRestoreCost(basePrice: number, restoreCount: number): number | null {
+  if (restoreCount >= MAX_RESTORES) return null
+  return Math.round(basePrice * RESTORE_COST_FRACTIONS[restoreCount])
+}
+
 /** Upgrade costs to reach each slot count (4–10). */
 const UPGRADE_COSTS: Record<number, number> = {
   4:  500_000,
