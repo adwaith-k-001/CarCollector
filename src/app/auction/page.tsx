@@ -119,6 +119,8 @@ export default function AuctionPage() {
   const [loading, setLoading] = useState(true)
   const [bidding, setBidding] = useState(false)
   const [skipping, setSkipping] = useState(false)
+  const [autoSkip, setAutoSkip] = useState(false)
+  const [togglingAutoSkip, setTogglingAutoSkip] = useState(false)
   const [patchNotes, setPatchNotes] = useState<PatchNote[]>([])
   const prevAuctionId = useRef<number | null>(null)
 
@@ -151,6 +153,7 @@ export default function AuctionPage() {
       setAuction(data.auction)
       setBalance(data.user_balance)
       setGarageCapacity(data.garage_capacity ?? 3)
+      setAutoSkip(data.auto_skip ?? false)
 
       // New auction started — clear bid messages
       if (prevAuctionId.current !== null && prevAuctionId.current !== data.auction.id) {
@@ -241,6 +244,25 @@ export default function AuctionPage() {
       // Silently ignore
     } finally {
       setSkipping(false)
+    }
+  }
+
+  async function handleToggleAutoSkip() {
+    setTogglingAutoSkip(true)
+    try {
+      const res = await fetch('/api/auction/autoskip', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setAutoSkip(data.auto_skip)
+        fetchAuction()
+      }
+    } catch {
+      // Silently ignore
+    } finally {
+      setTogglingAutoSkip(false)
     }
   }
 
@@ -552,6 +574,41 @@ export default function AuctionPage() {
                   >
                     {auction.you_voted_skip ? '✓ Voted to skip — click to undo' : 'Vote to Skip'}
                   </button>
+                </div>
+              )}
+
+              {/* Auto-skip (solo mode) */}
+              {auction && auction.online_users === 1 && (
+                <div className={`rounded-2xl p-4 border transition-colors ${
+                  autoSkip
+                    ? 'bg-purple-500/10 border-purple-500/40'
+                    : 'bg-[#12121e] border-[#2a2a3e]'
+                }`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div>
+                      <span className="text-xs font-semibold text-gray-300">Solo Mode — Auto Skip</span>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        {autoSkip
+                          ? 'Each car runs for 10 s then moves on automatically.'
+                          : 'Enable to zip through cars quickly — each gets 10 s.'}
+                      </p>
+                    </div>
+                    {/* Toggle switch */}
+                    <button
+                      onClick={handleToggleAutoSkip}
+                      disabled={togglingAutoSkip}
+                      aria-label="Toggle auto-skip"
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
+                        autoSkip ? 'bg-purple-500 border-purple-500' : 'bg-gray-700 border-gray-700'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 mt-0.5 rounded-full bg-white shadow transition-transform duration-200 ${
+                          autoSkip ? 'translate-x-5' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

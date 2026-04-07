@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
     const dbUser = await prisma.user.findUnique({
       where:  { id: user.userId },
-      select: { balance: true, garage_capacity: true },
+      select: { balance: true, garage_capacity: true, auto_skip: true },
     })
 
     // Supply info
@@ -40,6 +40,20 @@ export async function GET(req: NextRequest) {
 
     // Variant info
     const variantConf = getVariant(auction.variant)
+
+    // Auto-skip: if enabled and user is the only one online, snap timer to 10 s
+    const SKIP_END_TIME_MS = 10 * 1000
+    const nowMs = Date.now()
+    if (dbUser?.auto_skip) {
+      const onlineWindow = new Date(nowMs - 30 * 1000)
+      const soloCheck    = await prisma.user.count({ where: { last_active: { gte: onlineWindow } } })
+      const timeLeft     = auction.end_time.getTime() - nowMs
+      if (soloCheck === 1 && timeLeft > SKIP_END_TIME_MS) {
+        const newEnd = new Date(nowMs + SKIP_END_TIME_MS)
+        await prisma.auction.update({ where: { id: auction.id }, data: { end_time: newEnd } })
+        auction.end_time = newEnd
+      }
+    }
 
     // Skip vote info — threshold based on online players (active in last 30s)
     const onlineWindow = new Date(Date.now() - 30 * 1000)
@@ -97,6 +111,7 @@ export async function GET(req: NextRequest) {
       },
       user_balance:    dbUser?.balance ?? 0,
       garage_capacity: dbUser?.garage_capacity ?? 3,
+      auto_skip:       dbUser?.auto_skip ?? false,
     })
   } catch (error) {
     console.error('Auction current error:', error)
