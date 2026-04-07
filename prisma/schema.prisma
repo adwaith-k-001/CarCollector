@@ -19,6 +19,7 @@ model User {
   last_logout      DateTime?
   last_active      DateTime?
   last_sell_time   DateTime?
+  last_seen_patch  Int       @default(0)
   created_at       DateTime  @default(now())
 
   cars             UserCar[]

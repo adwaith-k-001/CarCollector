@@ -1,8 +1,8 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { callLogoutAPI, clearAuthStorage } from '@/lib/logout'
+import NavBar from '@/components/NavBar'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -667,30 +667,7 @@ export default function TradePage() {
 
   return (
     <div className="min-h-screen bg-[#0d0d1a] text-white">
-      {/* Navbar */}
-      <nav className="border-b border-[#2a2a3e] bg-[#0d0d1a]/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <span className="text-xl font-bold text-white">🏎️ CarAuction</span>
-            <div className="flex gap-1">
-              <Link href="/auction"     className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">Auction</Link>
-              <Link href="/garage"      className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">Garage</Link>
-              <Link href="/leaderboard" className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">Leaderboard</Link>
-              <Link href="/junkyard"    className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">Junkyard</Link>
-              <Link href="/trade"       className="px-3 py-1.5 rounded-lg bg-orange-500/20 text-orange-400 text-sm font-medium">Trade</Link>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-400">{username}</span>
-            <button
-              onClick={handleLogout}
-              className="text-xs text-gray-500 hover:text-red-400 transition-colors"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </nav>
+      <NavBar activePage="trade" username={username} onLogout={handleLogout} />
 
       {/* Toast */}
       {message && (
@@ -701,7 +678,7 @@ export default function TradePage() {
         </div>
       )}
 
-      <main className="max-w-6xl mx-auto px-4 py-6">
+      <main className="max-w-6xl mx-auto px-4 py-6 pb-24 md:pb-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white">Trade Market</h1>

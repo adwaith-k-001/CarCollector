@@ -1,8 +1,10 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { callLogoutAPI, clearAuthStorage } from '@/lib/logout'
+import NavBar from '@/components/NavBar'
+import PatchNotesModal from '@/components/PatchNotesModal'
+import type { PatchNote } from '@/data/patchNotes'
 
 interface Car {
   id: string
@@ -117,6 +119,7 @@ export default function AuctionPage() {
   const [loading, setLoading] = useState(true)
   const [bidding, setBidding] = useState(false)
   const [skipping, setSkipping] = useState(false)
+  const [patchNotes, setPatchNotes] = useState<PatchNote[]>([])
   const prevAuctionId = useRef<number | null>(null)
 
   const getToken = useCallback(() => {
@@ -162,14 +165,17 @@ export default function AuctionPage() {
     }
   }, [getToken, router])
 
-  // Auth check
+  // Auth check + patch notes
   useEffect(() => {
     const token = getToken()
-    if (!token) {
-      router.replace('/auth')
-      return
-    }
+    if (!token) { router.replace('/auth'); return }
     setUsername(localStorage.getItem('username') || '')
+
+    // Fetch unseen patch notes
+    fetch('/api/patch', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.unseen?.length) setPatchNotes(d.unseen) })
+      .catch(() => {})
   }, [getToken, router])
 
 
@@ -244,6 +250,12 @@ export default function AuctionPage() {
     router.push('/auth')
   }
 
+  async function dismissPatchNotes() {
+    const token = getToken()
+    if (token) await fetch('/api/patch', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {})
+    setPatchNotes([])
+  }
+
   function getTimerColor() {
     if (timeLeft > 30) return 'text-green-400'
     if (timeLeft > 10) return 'text-amber-400'
@@ -260,45 +272,10 @@ export default function AuctionPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a14]">
-      {/* Navbar */}
-      <nav className="border-b border-[#2a2a3e] bg-[#0d0d1a]/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <span className="text-xl font-bold text-white">🏎️ CarAuction</span>
-            <div className="flex gap-1">
-              <Link href="/auction" className="px-3 py-1.5 rounded-lg bg-orange-500/20 text-orange-400 text-sm font-medium">
-                Auction
-              </Link>
-              <Link href="/garage" className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">
-                Garage
-              </Link>
-              <Link href="/leaderboard" className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">
-                Leaderboard
-              </Link>
-              <Link href="/junkyard" className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">
-                Junkyard
-              </Link>
-              <Link href="/trade" className="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors">
-                Trade
-              </Link>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <div className="text-xs text-gray-500">{username}</div>
-              <div className="text-sm font-bold text-green-400">${balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="text-xs text-gray-500 hover:text-red-400 transition-colors"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </nav>
+      <PatchNotesModal patches={patchNotes} onDismiss={dismissPatchNotes} />
+      <NavBar activePage="auction" username={username} balance={balance} onLogout={handleLogout} />
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-8 pb-24 md:pb-8">
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-orange-400 text-lg animate-pulse">Loading auction...</div>
