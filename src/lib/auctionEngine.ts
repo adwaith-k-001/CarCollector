@@ -3,9 +3,12 @@ import { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
 import { getAllQuantities } from './quantityData'
 import { currentCondition, MIN_VALUE_RATIO, tuneIncomeMultiplier, incomeConditionMultiplier } from './depreciation'
-import { getVariant, pickRandomVariant } from './variantData'
+import { getVariant } from './variantData'
 
 const AUCTION_DURATION_MS  = 60 * 1000
+const VARIANTS_PER_CAR     = 2
+const ALL_VARIANTS          = ['stock', 'clean', 'performance'] as const
+const NEVER_AUCTIONED_HUNGER = 50 // default hunger for cars that have never been auctioned
 const INCOME_INTERVAL_MS   = 60 * 1000
 const INTEGRITY_INTERVAL_MS = 60 * 1000
 
@@ -309,7 +312,7 @@ async function _startNewAuction(): Promise<void> {
   // ── No used cars — pick a new car ────────────────────────────────────────
   const allCars = await prisma.car.findMany({
     where: { is_active: true },
-    select: { id: true, name: true, base_price: true, category: true },
+    select: { id: true, name: true, base_price: true, category: true, last_auctioned_at: true },
   })
   if (allCars.length === 0) return
 
@@ -329,8 +332,38 @@ async function _startNewAuction(): Promise<void> {
   })
   if (eligibleCars.length === 0) return
 
-  const randomCar   = eligibleCars[Math.floor(Math.random() * eligibleCars.length)]
-  const variantKey  = randomCar.category === 'common' ? 'clean' : pickRandomVariant()
+  // Hunger-weighted random selection: cars unseen longer are more likely to appear
+  const now = Date.now()
+  const weights = eligibleCars.map((car) => {
+    if (!car.last_auctioned_at) return NEVER_AUCTIONED_HUNGER
+    return Math.floor((now - car.last_auctioned_at.getTime()) / AUCTION_DURATION_MS) + 1
+  })
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0)
+  let roll = Math.random() * totalWeight
+  let randomCar = eligibleCars[eligibleCars.length - 1]
+  for (let i = 0; i < eligibleCars.length; i++) {
+    roll -= weights[i]
+    if (roll <= 0) { randomCar = eligibleCars[i]; break }
+  }
+
+  let variantKey: string
+  if (randomCar.category === 'common') {
+    variantKey = 'clean'
+  } else {
+    // Count how many of each variant already exist for this car across all states
+    const [ownedByVariant, availableByVariant, auctionedByVariant] = await Promise.all([
+      prisma.userCar.groupBy({ by: ['variant'], where: { car_id: randomCar.id }, _count: true }),
+      prisma.availableCarInstance.groupBy({ by: ['variant'], where: { car_id: randomCar.id }, _count: true }),
+      prisma.auction.groupBy({ by: ['variant'], where: { car_id: randomCar.id, is_active: true }, _count: true }),
+    ])
+    const variantCount: Record<string, number> = { stock: 0, clean: 0, performance: 0 }
+    for (const row of [...ownedByVariant, ...availableByVariant, ...auctionedByVariant]) {
+      variantCount[row.variant] = (variantCount[row.variant] ?? 0) + row._count
+    }
+    const open = ALL_VARIANTS.filter(v => variantCount[v] < VARIANTS_PER_CAR)
+    variantKey = open[Math.floor(Math.random() * open.length)] ?? 'clean'
+  }
+
   const variantConf = getVariant(variantKey)
 
   try {
@@ -351,6 +384,10 @@ async function _startNewAuction(): Promise<void> {
             end_time:            endTime,
             is_active:           true,
           },
+        })
+        await tx.car.update({
+          where: { id: randomCar.id },
+          data:  { last_auctioned_at: startTime },
         })
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }

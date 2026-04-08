@@ -44,6 +44,8 @@ model Car {
   image_path   String
   is_active    Boolean @default(false) // only active cars enter auctions; set true once image exists
 
+  last_auctioned_at   DateTime?
+
   user_cars           UserCar[]
   auctions            Auction[]
   available_instances AvailableCarInstance[]
