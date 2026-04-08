@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 
-export type ActivePage = 'auction' | 'garage' | 'leaderboard' | 'junkyard' | 'trade'
+export type ActivePage = 'auction' | 'garage' | 'leaderboard' | 'junkyard' | 'trade' | 'account'
 
 interface NavBarProps {
   activePage: ActivePage
@@ -13,9 +13,10 @@ interface NavBarProps {
 const NAV_ITEMS: { page: ActivePage; label: string; href: string; icon: string }[] = [
   { page: 'auction',     label: 'Auction',     href: '/auction',     icon: '🔨' },
   { page: 'garage',      label: 'Garage',      href: '/garage',      icon: '🚗' },
-  { page: 'leaderboard', label: 'Board',        href: '/leaderboard', icon: '🏆' },
+  { page: 'leaderboard', label: 'Board',       href: '/leaderboard', icon: '🏆' },
   { page: 'junkyard',    label: 'Junkyard',    href: '/junkyard',    icon: '♻️' },
   { page: 'trade',       label: 'Trade',       href: '/trade',       icon: '🤝' },
+  { page: 'account',     label: 'Account',     href: '/account',     icon: '👤' },
 ]
 
 export default function NavBar({ activePage, username, balance, onLogout }: NavBarProps) {
