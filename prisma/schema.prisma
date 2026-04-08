@@ -31,6 +31,7 @@ model User {
   trade_offers_sent     TradeOffer[] @relation("TradeOffersFrom")
   trade_offers_received TradeOffer[] @relation("TradeOffersTo")
   net_worth_log         UserNetWorthLog[]
+  position_logs         LeaderboardPositionLog[]
 }
 
 model Car {
@@ -164,6 +165,32 @@ model TradeOffer {
   from_user  User @relation("TradeOffersFrom", fields: [from_user_id], references: [id])
   to_user    User @relation("TradeOffersTo",   fields: [to_user_id],   references: [id])
   car        Car  @relation(fields: [car_id], references: [id])
+}
+
+model Season {
+  id            Int      @id @default(autoincrement())
+  season_number Int      @unique
+  start_time    DateTime
+  end_time      DateTime
+  cooldown_end  DateTime
+  status        String   @default("active") // "active" | "cooldown" | "ended"
+
+  position_logs LeaderboardPositionLog[]
+}
+
+model LeaderboardPositionLog {
+  id         Int       @id @default(autoincrement())
+  season_id  Int
+  user_id    Int
+  rank       Int       // 1, 2, or 3
+  entered_at DateTime  @default(now())
+  exited_at  DateTime?
+
+  season Season @relation(fields: [season_id], references: [id])
+  user   User   @relation(fields: [user_id], references: [id])
+
+  @@index([season_id, rank])
+  @@index([season_id, user_id])
 }
 
 model UserNetWorthLog {
