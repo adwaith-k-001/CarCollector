@@ -192,6 +192,9 @@ export default function SeasonsPage() {
       ? 'New season starts in'
       : 'Season ended'
 
+  // Must be called unconditionally at top level — not inside JSX
+  const countdownMs = useCountdown(countdownTarget)
+
   return (
     <div className="min-h-screen bg-[#07070f] text-white pb-20 md:pb-0">
       <NavBar activePage="seasons" username={username} balance={balance} onLogout={handleLogout} />
@@ -218,7 +221,7 @@ export default function SeasonsPage() {
           {season.phase === 'ended' ? (
             <div className="text-center text-gray-500 text-sm">Season has ended</div>
           ) : (
-            <CountdownDisplay ms={useCountdownValue(countdownTarget)} label={countdownLabel} />
+            <CountdownDisplay ms={countdownMs} label={countdownLabel} />
           )}
           <div className="flex justify-between text-xs text-gray-600 mt-6 pt-4 border-t border-gray-800">
             <span>Started {new Date(season.start_time).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
@@ -275,7 +278,3 @@ export default function SeasonsPage() {
   )
 }
 
-// Hook wrapper to allow calling useCountdown inside JSX conditionally
-function useCountdownValue(target: string) {
-  return useCountdown(target)
-}
