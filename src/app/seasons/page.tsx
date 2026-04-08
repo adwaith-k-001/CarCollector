@@ -175,6 +175,12 @@ export default function SeasonsPage() {
     return () => clearInterval(interval)
   }, [getToken, fetchData, router])
 
+  // Derive countdown target — falls back to empty string before data loads (hook must run unconditionally)
+  const countdownTarget = data
+    ? (data.season.phase === 'active' ? data.season.end_time : data.season.cooldown_end)
+    : ''
+  const countdownMs = useCountdown(countdownTarget)
+
   if (loading) return (
     <div className="min-h-screen bg-[#07070f] flex items-center justify-center text-gray-400">Loading...</div>
   )
@@ -185,15 +191,11 @@ export default function SeasonsPage() {
   const isActive   = season.phase === 'active'
   const isCooldown = season.phase === 'cooldown'
 
-  const countdownTarget = isActive ? season.end_time : season.cooldown_end
-  const countdownLabel  = isActive
+  const countdownLabel = isActive
     ? 'Season ends in'
     : isCooldown
       ? 'New season starts in'
       : 'Season ended'
-
-  // Must be called unconditionally at top level — not inside JSX
-  const countdownMs = useCountdown(countdownTarget)
 
   return (
     <div className="min-h-screen bg-[#07070f] text-white pb-20 md:pb-0">
