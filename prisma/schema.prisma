@@ -32,6 +32,9 @@ model User {
   trade_offers_received TradeOffer[] @relation("TradeOffersTo")
   net_worth_log         UserNetWorthLog[]
   position_logs         LeaderboardPositionLog[]
+  tokens                Int       @default(0)
+  token_purchases       TokenStorePurchase[]
+  token_store_items     TokenStoreItem[] @relation("ItemOwner")
 }
 
 model Car {
@@ -212,6 +215,39 @@ model CarVariantHunger {
   car Car @relation(fields: [car_id], references: [id])
 
   @@id([car_id, variant])
+}
+
+model TokenStoreItem {
+  id            String   @id
+  category      String   // "house" | "watch" | "aircraft" | "club"
+  name          String
+  location      String?
+  property_type String?
+  bedrooms      Int?
+  bathrooms     Int?
+  area_sqft     Int?
+  land_sqft     Int?
+  floor_level   String?
+  image_path    String
+  token_price   Int
+  real_value    Float
+  description   String   // newline-separated bullet lines
+  status        String   @default("available") // "available" | "coming_soon"
+  owner_id      Int?
+
+  owner         User?              @relation("ItemOwner", fields: [owner_id], references: [id])
+  purchases     TokenStorePurchase[]
+}
+
+model TokenStorePurchase {
+  id           Int      @id @default(autoincrement())
+  user_id      Int
+  item_id      String
+  token_cost   Int
+  purchased_at DateTime @default(now())
+
+  user         User           @relation(fields: [user_id], references: [id])
+  item         TokenStoreItem @relation(fields: [item_id], references: [id])
 }
 
 model AuctionSkipVote {

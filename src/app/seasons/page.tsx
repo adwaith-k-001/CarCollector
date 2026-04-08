@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import NavBar from '@/components/NavBar'
 import { callLogoutAPI, clearAuthStorage } from '@/lib/logout'
 
@@ -260,20 +261,20 @@ export default function SeasonsPage() {
           </div>
         </div>
 
-        {/* Token store placeholder */}
-        <button
-          disabled
-          className="w-full bg-[#0d0d1a] border border-gray-800 rounded-2xl p-5 flex items-center justify-between opacity-50 cursor-not-allowed"
+        {/* Token store */}
+        <Link
+          href="/token-store"
+          className="w-full bg-[#0d0d1a] border border-amber-500/30 rounded-2xl p-5 flex items-center justify-between hover:border-amber-500/60 hover:bg-amber-500/5 transition-colors group"
         >
           <div className="text-left">
             <div className="text-sm font-semibold text-white">Token Store</div>
-            <div className="text-xs text-gray-600 mt-0.5">Houses, jets, collectibles &amp; more</div>
+            <div className="text-xs text-gray-500 mt-0.5">Houses, watches, aircraft &amp; more</div>
           </div>
-          <div className="flex items-center gap-2 text-gray-600 text-sm">
-            <span>Coming soon</span>
+          <div className="flex items-center gap-2 text-amber-500 text-sm font-medium group-hover:translate-x-1 transition-transform">
+            <span>Spend tokens</span>
             <span>→</span>
           </div>
-        </button>
+        </Link>
 
       </div>
     </div>
