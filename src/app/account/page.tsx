@@ -251,7 +251,7 @@ export default function AccountPage() {
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <div className="text-sm font-semibold text-white">Net Worth Over Time</div>
-                  <div className="text-xs text-gray-600">Estimated cash balance from trading activity · income not reflected</div>
+                  <div className="text-xs text-gray-600">Cash + garage value · sampled every 5 minutes</div>
                 </div>
                 <div className="text-sm font-bold text-amber-400">{fmt(trading.total_networth)}</div>
               </div>

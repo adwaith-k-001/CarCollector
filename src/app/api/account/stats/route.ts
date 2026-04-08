@@ -4,7 +4,8 @@ import { getAuthUser } from '@/lib/auth'
 import { currentCondition, tuneIncomeMultiplier, incomeConditionMultiplier } from '@/lib/depreciation'
 import { getVariant } from '@/lib/variantData'
 
-const INITIAL_BALANCE = 10_000
+const INITIAL_BALANCE    = 10_000
+const SNAPSHOT_INTERVAL  = 5 * 60 * 1000  // record at most once every 5 minutes
 
 export async function GET(req: NextRequest) {
   const user = getAuthUser(req)
@@ -41,34 +42,53 @@ export async function GET(req: NextRequest) {
     const variant = getVariant(uc.variant)
     const cond    = currentCondition(uc.condition, uc.purchase_time, variant.decay_multiplier)
     totalGarageValue += uc.car.base_price * cond * (1 + variant.resale_bonus)
-    // Fix: apply all three multipliers, matching auctionEngine income formula
     totalIncomeRate  += uc.car.income_rate
                       * variant.income_multiplier
                       * tuneIncomeMultiplier(uc.tune_stage)
                       * incomeConditionMultiplier(cond)
   }
 
-  // ── Trading stats ─────────────────────────────────────────────────────────
-  const auctionsWon  = history.filter(h => h.event === 'won_auction')
-  const carsSold     = history.filter(h => h.event === 'sold')
-  const carsJunked   = history.filter(h => h.event === 'junked')
-  const totalEarned  = carsSold.reduce((s, h) => s + (h.price ?? 0), 0)
-  const largestBuy   = auctionsWon.reduce((m, h) => Math.max(m, h.price ?? 0), 0)
+  const currentNetWorth = Math.round(dbUser.balance + totalGarageValue)
 
-  // ── Net worth over time (estimated from trading events, income excluded) ──
-  // Start from INITIAL_BALANCE and apply each buy/sell event chronologically
-  let runningBalance = INITIAL_BALANCE
-  const networthHistory = [
-    { date: dbUser.created_at.toISOString(), value: INITIAL_BALANCE },
-    ...history
-      .filter(h => h.price !== null && (h.event === 'won_auction' || h.event === 'sold'))
-      .map(h => {
-        runningBalance += h.event === 'sold' ? (h.price ?? 0) : -(h.price ?? 0)
-        return { date: h.created_at.toISOString(), value: Math.round(runningBalance) }
-      }),
-  ]
-  // Append current balance as final point so the line ends at today's real value
-  networthHistory.push({ date: new Date().toISOString(), value: Math.round(dbUser.balance) })
+  // ── Snapshot: record net worth, at most once per 5 minutes ───────────────
+  const lastSnap = await prisma.userNetWorthLog.findFirst({
+    where:   { user_id: user.userId },
+    orderBy: { logged_at: 'desc' },
+  })
+
+  const shouldRecord = !lastSnap
+    || (Date.now() - lastSnap.logged_at.getTime()) > SNAPSHOT_INTERVAL
+
+  if (shouldRecord) {
+    // Seed the account creation point ($10k) if this is the very first snapshot
+    if (!lastSnap) {
+      await prisma.userNetWorthLog.create({
+        data: { user_id: user.userId, net_worth: INITIAL_BALANCE, logged_at: dbUser.created_at },
+      })
+    }
+    await prisma.userNetWorthLog.create({
+      data: { user_id: user.userId, net_worth: currentNetWorth },
+    })
+  }
+
+  // ── Fetch all snapshots for the chart ────────────────────────────────────
+  const snapshots = await prisma.userNetWorthLog.findMany({
+    where:   { user_id: user.userId },
+    orderBy: { logged_at: 'asc' },
+    select:  { net_worth: true, logged_at: true },
+  })
+
+  const networthHistory = snapshots.map(s => ({
+    date:  s.logged_at.toISOString(),
+    value: Math.round(s.net_worth),
+  }))
+
+  // ── Trading stats ─────────────────────────────────────────────────────────
+  const auctionsWon = history.filter(h => h.event === 'won_auction')
+  const carsSold    = history.filter(h => h.event === 'sold')
+  const carsJunked  = history.filter(h => h.event === 'junked')
+  const totalEarned = carsSold.reduce((s, h) => s + (h.price ?? 0), 0)
+  const largestBuy  = auctionsWon.reduce((m, h) => Math.max(m, h.price ?? 0), 0)
 
   // ── Bid activity — last 14 days ───────────────────────────────────────────
   const now    = new Date()
@@ -84,8 +104,6 @@ export async function GET(req: NextRequest) {
     const day = bid.created_at.toISOString().slice(0, 10)
     if (day in bidsByDay) bidsByDay[day]++
   }
-
-  const bidActivity = Object.entries(bidsByDay).map(([date, count]) => ({ date, count }))
 
   return NextResponse.json({
     user: {
@@ -107,9 +125,9 @@ export async function GET(req: NextRequest) {
       cars_junked:   carsJunked.length,
       total_earned:  Math.round(totalEarned),
       largest_buy:   Math.round(largestBuy),
-      total_networth: Math.round(dbUser.balance + totalGarageValue),
+      total_networth: currentNetWorth,
     },
     networth_history: networthHistory,
-    bid_activity:     bidActivity,
+    bid_activity:     Object.entries(bidsByDay).map(([date, count]) => ({ date, count })),
   })
 }

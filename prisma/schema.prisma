@@ -30,6 +30,7 @@ model User {
   car_history      CarHistoryEntry[]
   trade_offers_sent     TradeOffer[] @relation("TradeOffersFrom")
   trade_offers_received TradeOffer[] @relation("TradeOffersTo")
+  net_worth_log         UserNetWorthLog[]
 }
 
 model Car {
@@ -163,6 +164,17 @@ model TradeOffer {
   from_user  User @relation("TradeOffersFrom", fields: [from_user_id], references: [id])
   to_user    User @relation("TradeOffersTo",   fields: [to_user_id],   references: [id])
   car        Car  @relation(fields: [car_id], references: [id])
+}
+
+model UserNetWorthLog {
+  id        Int      @id @default(autoincrement())
+  user_id   Int
+  net_worth Float
+  logged_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@index([user_id, logged_at])
 }
 
 model CarVariantHunger {
