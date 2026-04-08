@@ -85,5 +85,11 @@ export async function GET(req: NextRequest) {
     }
   })
 
+  result.sort((a, b) => {
+    const aHunger = a.variants.reduce((s, v) => s + v.hunger, 0)
+    const bHunger = b.variants.reduce((s, v) => s + v.hunger, 0)
+    return bHunger - aHunger
+  })
+
   return NextResponse.json({ cars: result, total_weight: totalWeight })
 }

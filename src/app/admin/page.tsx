@@ -79,7 +79,12 @@ export default function AdminPage() {
       if (res.status === 403) { setError('Access denied'); setLoading(false); return }
       if (!res.ok) return
       const data = await res.json()
-      setCars(data.cars)
+      const sorted = [...data.cars].sort((a: CarHunger, b: CarHunger) => {
+        const aH = a.variants.reduce((s, v) => s + v.hunger, 0)
+        const bH = b.variants.reduce((s, v) => s + v.hunger, 0)
+        return bH - aH
+      })
+      setCars(sorted)
       setTotalWeight(data.total_weight)
       setLastUpdated(new Date())
     } catch { /* silent retry */ }
