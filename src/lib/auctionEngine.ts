@@ -309,62 +309,79 @@ async function _startNewAuction(): Promise<void> {
     return
   }
 
-  // ── No used cars — pick a new car ────────────────────────────────────────
+  // ── No used cars — pick a new (car, variant) pair ───────────────────────
   const allCars = await prisma.car.findMany({
     where: { is_active: true },
-    select: { id: true, name: true, base_price: true, category: true, last_auctioned_at: true },
+    select: { id: true, name: true, base_price: true, category: true },
   })
   if (allCars.length === 0) return
 
   const quantities = getAllQuantities()
 
-  const [ownedCounts, availableCounts] = await Promise.all([
-    prisma.userCar.groupBy({ by: ['car_id'], _count: { car_id: true } }),
-    prisma.availableCarInstance.groupBy({ by: ['car_id'], _count: { car_id: true } }),
+  // Per-(car, variant) counts across all states
+  const [ownedByVariant, availableByVariant, activeAuctions] = await Promise.all([
+    prisma.userCar.groupBy({ by: ['car_id', 'variant'], _count: true }),
+    prisma.availableCarInstance.groupBy({ by: ['car_id', 'variant'], _count: true }),
+    prisma.auction.findMany({ where: { is_active: true }, select: { car_id: true, variant: true } }),
   ])
-  const ownedMap     = new Map(ownedCounts.map((o) => [o.car_id, o._count.car_id]))
-  const availableMap = new Map(availableCounts.map((a) => [a.car_id, a._count.car_id]))
 
-  const eligibleCars = allCars.filter((car) => {
-    const maxQty = quantities[car.name]
-    if (maxQty === undefined) return true
-    return (ownedMap.get(car.id) ?? 0) + (availableMap.get(car.id) ?? 0) < maxQty
-  })
-  if (eligibleCars.length === 0) return
-
-  // Hunger-weighted random selection: cars unseen longer are more likely to appear
-  const now = Date.now()
-  const weights = eligibleCars.map((car) => {
-    if (!car.last_auctioned_at) return NEVER_AUCTIONED_HUNGER
-    return Math.floor((now - car.last_auctioned_at.getTime()) / AUCTION_DURATION_MS) + 1
-  })
-  const totalWeight = weights.reduce((sum, w) => sum + w, 0)
-  let roll = Math.random() * totalWeight
-  let randomCar = eligibleCars[eligibleCars.length - 1]
-  for (let i = 0; i < eligibleCars.length; i++) {
-    roll -= weights[i]
-    if (roll <= 0) { randomCar = eligibleCars[i]; break }
+  // variantCount[carId][variant] = total instances in circulation
+  const variantCount: Record<string, Record<string, number>> = {}
+  for (const row of [...ownedByVariant, ...availableByVariant]) {
+    if (!variantCount[row.car_id]) variantCount[row.car_id] = {}
+    variantCount[row.car_id][row.variant] = (variantCount[row.car_id][row.variant] ?? 0) + row._count
+  }
+  for (const a of activeAuctions) {
+    if (!variantCount[a.car_id]) variantCount[a.car_id] = {}
+    variantCount[a.car_id][a.variant] = (variantCount[a.car_id][a.variant] ?? 0) + 1
   }
 
-  let variantKey: string
-  if (randomCar.category === 'common') {
-    variantKey = 'clean'
-  } else {
-    // Count how many of each variant already exist for this car across all states
-    const [ownedByVariant, availableByVariant, auctionedByVariant] = await Promise.all([
-      prisma.userCar.groupBy({ by: ['variant'], where: { car_id: randomCar.id }, _count: true }),
-      prisma.availableCarInstance.groupBy({ by: ['variant'], where: { car_id: randomCar.id }, _count: true }),
-      prisma.auction.groupBy({ by: ['variant'], where: { car_id: randomCar.id, is_active: true }, _count: true }),
-    ])
-    const variantCount: Record<string, number> = { stock: 0, clean: 0, performance: 0 }
-    for (const row of [...ownedByVariant, ...availableByVariant, ...auctionedByVariant]) {
-      variantCount[row.variant] = (variantCount[row.variant] ?? 0) + row._count
+  // Per-(car, variant) hunger from the hunger table
+  const hungerRecords = await prisma.carVariantHunger.findMany()
+  const hungerMap = new Map<string, Date>()
+  for (const h of hungerRecords) {
+    hungerMap.set(`${h.car_id}:${h.variant}`, h.last_auctioned_at)
+  }
+
+  // Build eligible (car, variant) pairs with hunger weights
+  const nowMs = Date.now()
+  type Pair = { carId: string; carName: string; basePrice: number; variant: string; hunger: number }
+  const pairs: Pair[] = []
+
+  for (const car of allCars) {
+    const maxQty    = quantities[car.name]
+    const carCounts = variantCount[car.id] ?? {}
+
+    if (car.category === 'common') {
+      // Common cars: only 'clean', check total supply cap
+      const total = Object.values(carCounts).reduce((s, v) => s + v, 0)
+      if (maxQty !== undefined && total >= maxQty) continue
+      const last   = hungerMap.get(`${car.id}:clean`)
+      const hunger = last ? Math.floor((nowMs - last.getTime()) / AUCTION_DURATION_MS) + 1 : NEVER_AUCTIONED_HUNGER
+      pairs.push({ carId: car.id, carName: car.name, basePrice: car.base_price, variant: 'clean', hunger })
+    } else {
+      // Non-common: each variant independently capped at VARIANTS_PER_CAR
+      for (const variant of ALL_VARIANTS) {
+        if ((carCounts[variant] ?? 0) >= VARIANTS_PER_CAR) continue
+        const last   = hungerMap.get(`${car.id}:${variant}`)
+        const hunger = last ? Math.floor((nowMs - last.getTime()) / AUCTION_DURATION_MS) + 1 : NEVER_AUCTIONED_HUNGER
+        pairs.push({ carId: car.id, carName: car.name, basePrice: car.base_price, variant, hunger })
+      }
     }
-    const open = ALL_VARIANTS.filter(v => variantCount[v] < VARIANTS_PER_CAR)
-    variantKey = open[Math.floor(Math.random() * open.length)] ?? 'clean'
   }
 
-  const variantConf = getVariant(variantKey)
+  if (pairs.length === 0) return
+
+  // Weighted pick of (car, variant)
+  const totalWeight = pairs.reduce((s, p) => s + p.hunger, 0)
+  let roll    = Math.random() * totalWeight
+  let picked  = pairs[pairs.length - 1]
+  for (const pair of pairs) {
+    roll -= pair.hunger
+    if (roll <= 0) { picked = pair; break }
+  }
+
+  const variantConf = getVariant(picked.variant)
 
   try {
     await prisma.$transaction(
@@ -374,20 +391,21 @@ async function _startNewAuction(): Promise<void> {
 
         await tx.auction.create({
           data: {
-            car_id:              randomCar.id,
+            car_id:              picked.carId,
             instance_key:        null,
             start_condition:     1.0,
             tune_stage:          0,
-            variant:             variantKey,
-            current_highest_bid: Math.round(randomCar.base_price * (1 + variantConf.resale_bonus)),
+            variant:             picked.variant,
+            current_highest_bid: Math.round(picked.basePrice * (1 + variantConf.resale_bonus)),
             start_time:          startTime,
             end_time:            endTime,
             is_active:           true,
           },
         })
-        await tx.car.update({
-          where: { id: randomCar.id },
-          data:  { last_auctioned_at: startTime },
+        await tx.carVariantHunger.upsert({
+          where:  { car_id_variant: { car_id: picked.carId, variant: picked.variant } },
+          update: { last_auctioned_at: startTime },
+          create: { car_id: picked.carId, variant: picked.variant, last_auctioned_at: startTime },
         })
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }

@@ -44,14 +44,13 @@ model Car {
   image_path   String
   is_active    Boolean @default(false) // only active cars enter auctions; set true once image exists
 
-  last_auctioned_at   DateTime?
-
   user_cars           UserCar[]
   auctions            Auction[]
   available_instances AvailableCarInstance[]
   junkyard_cars       JunkyardCar[]
   history_entries     CarHistoryEntry[]
   trade_offers        TradeOffer[]
+  variant_hunger      CarVariantHunger[]
 }
 
 model Auction {
@@ -164,6 +163,16 @@ model TradeOffer {
   from_user  User @relation("TradeOffersFrom", fields: [from_user_id], references: [id])
   to_user    User @relation("TradeOffersTo",   fields: [to_user_id],   references: [id])
   car        Car  @relation(fields: [car_id], references: [id])
+}
+
+model CarVariantHunger {
+  car_id            String
+  variant           String
+  last_auctioned_at DateTime
+
+  car Car @relation(fields: [car_id], references: [id])
+
+  @@id([car_id, variant])
 }
 
 model AuctionSkipVote {
