@@ -1,1 +1,10 @@
-[]
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.carcollector.app",
+    "sha256_cert_fingerprints": [
+      "9F:5C:60:67:67:79:E2:25:D7:27:B4:3B:28:23:2B:F1:18:5C:A7:50:97:62:A9:B3:74:BA:C8:41:AF:89:4C:1B"
+    ]
+  }
+}]
