@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
-import { currentCondition } from '@/lib/depreciation'
+import { currentCondition, tuneIncomeMultiplier, incomeConditionMultiplier } from '@/lib/depreciation'
 import { getVariant } from '@/lib/variantData'
+
+const INITIAL_BALANCE = 10_000
 
 export async function GET(req: NextRequest) {
   const user = getAuthUser(req)
@@ -39,30 +41,40 @@ export async function GET(req: NextRequest) {
     const variant = getVariant(uc.variant)
     const cond    = currentCondition(uc.condition, uc.purchase_time, variant.decay_multiplier)
     totalGarageValue += uc.car.base_price * cond * (1 + variant.resale_bonus)
-    totalIncomeRate  += uc.car.income_rate * variant.income_multiplier
+    // Fix: apply all three multipliers, matching auctionEngine income formula
+    totalIncomeRate  += uc.car.income_rate
+                      * variant.income_multiplier
+                      * tuneIncomeMultiplier(uc.tune_stage)
+                      * incomeConditionMultiplier(cond)
   }
 
   // ── Trading stats ─────────────────────────────────────────────────────────
-  const auctionsWon = history.filter(h => h.event === 'won_auction')
-  const carsSold    = history.filter(h => h.event === 'sold')
-  const totalSpent  = auctionsWon.reduce((s, h) => s + (h.price ?? 0), 0)
-  const totalEarned = carsSold.reduce((s, h) => s + (h.price ?? 0), 0)
+  const auctionsWon  = history.filter(h => h.event === 'won_auction')
+  const carsSold     = history.filter(h => h.event === 'sold')
+  const carsJunked   = history.filter(h => h.event === 'junked')
+  const totalEarned  = carsSold.reduce((s, h) => s + (h.price ?? 0), 0)
+  const largestBuy   = auctionsWon.reduce((m, h) => Math.max(m, h.price ?? 0), 0)
 
-  // ── P&L history (cumulative) ──────────────────────────────────────────────
-  let cumulative = 0
-  const pnlHistory = history
-    .filter(h => h.price !== null)
-    .map(h => {
-      cumulative += h.event === 'sold' ? (h.price ?? 0) : -(h.price ?? 0)
-      return { date: h.created_at.toISOString(), pnl: Math.round(cumulative) }
-    })
+  // ── Net worth over time (estimated from trading events, income excluded) ──
+  // Start from INITIAL_BALANCE and apply each buy/sell event chronologically
+  let runningBalance = INITIAL_BALANCE
+  const networthHistory = [
+    { date: dbUser.created_at.toISOString(), value: INITIAL_BALANCE },
+    ...history
+      .filter(h => h.price !== null && (h.event === 'won_auction' || h.event === 'sold'))
+      .map(h => {
+        runningBalance += h.event === 'sold' ? (h.price ?? 0) : -(h.price ?? 0)
+        return { date: h.created_at.toISOString(), value: Math.round(runningBalance) }
+      }),
+  ]
+  // Append current balance as final point so the line ends at today's real value
+  networthHistory.push({ date: new Date().toISOString(), value: Math.round(dbUser.balance) })
 
   // ── Bid activity — last 14 days ───────────────────────────────────────────
   const now    = new Date()
   const cutoff = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
   const bidsByDay: Record<string, number> = {}
 
-  // Pre-fill all 14 days with 0
   for (let i = 13; i >= 0; i--) {
     const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
     bidsByDay[d.toISOString().slice(0, 10)] = 0
@@ -77,26 +89,27 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     user: {
-      username:       dbUser.username,
-      balance:        dbUser.balance,
-      created_at:     dbUser.created_at,
-      last_login:     dbUser.last_login,
+      username:        dbUser.username,
+      balance:         dbUser.balance,
+      created_at:      dbUser.created_at,
+      last_login:      dbUser.last_login,
       garage_capacity: dbUser.garage_capacity,
     },
     garage: {
-      car_count:          userCars.length,
-      total_value:        Math.round(totalGarageValue),
+      car_count:           userCars.length,
+      total_value:         Math.round(totalGarageValue),
       income_rate_per_min: Math.round(totalIncomeRate * 100) / 100,
     },
     trading: {
-      total_bids:   bids.length,
-      auctions_won: auctionsWon.length,
-      cars_sold:    carsSold.length,
-      total_spent:  Math.round(totalSpent),
-      total_earned: Math.round(totalEarned),
-      net_pnl:      Math.round(totalEarned - totalSpent),
+      total_bids:    bids.length,
+      auctions_won:  auctionsWon.length,
+      cars_sold:     carsSold.length,
+      cars_junked:   carsJunked.length,
+      total_earned:  Math.round(totalEarned),
+      largest_buy:   Math.round(largestBuy),
+      total_networth: Math.round(dbUser.balance + totalGarageValue),
     },
-    pnl_history:  pnlHistory,
-    bid_activity: bidActivity,
+    networth_history: networthHistory,
+    bid_activity:     bidActivity,
   })
 }
