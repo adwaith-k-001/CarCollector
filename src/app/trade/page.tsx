@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { callLogoutAPI, clearAuthStorage } from '@/lib/logout'
 import NavBar from '@/components/NavBar'
 
@@ -726,6 +727,12 @@ export default function TradePage() {
           >
             My Offers
           </button>
+          <Link
+            href="/junkyard"
+            className="px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-b-2 -mb-px border-transparent text-gray-400 hover:text-white flex items-center gap-1.5"
+          >
+            <span>♻️</span> Junkyard
+          </Link>
         </div>
 
         {tab === 'browse' ? (
