@@ -56,14 +56,21 @@ export async function GET(req: NextRequest) {
     const totalOwned = Object.values(carCounts).reduce((s, v) => s + v, 0)
     const isOnAuction = activeAuction?.car_id === car.id
 
-    const variantInfo = (ALL_VARIANTS as readonly string[]).map((v) => {
-      const count      = carCounts[v] ?? 0
-      const exhausted  = maxQty !== null ? count >= 2 : false
-      const last       = hungerMap.get(`${car.id}:${v}`) ?? null
-      const hunger     = exhausted ? 0 : computeHunger(last)
-      if (!exhausted) totalWeight += hunger
-      return { variant: v, count, exhausted, hunger, last_auctioned_at: last }
-    })
+    const variantInfo = car.category === 'common'
+      ? (() => {
+          const last   = hungerMap.get(`${car.id}:clean`) ?? null
+          const hunger = computeHunger(last)
+          totalWeight += hunger
+          return [{ variant: 'clean', count: totalOwned, exhausted: false, hunger, last_auctioned_at: last }]
+        })()
+      : (ALL_VARIANTS as readonly string[]).map((v) => {
+          const count     = carCounts[v] ?? 0
+          const exhausted = maxQty !== null ? count >= 2 : false
+          const last      = hungerMap.get(`${car.id}:${v}`) ?? null
+          const hunger    = exhausted ? 0 : computeHunger(last)
+          if (!exhausted) totalWeight += hunger
+          return { variant: v, count, exhausted, hunger, last_auctioned_at: last }
+        })
 
     return {
       id:            car.id,

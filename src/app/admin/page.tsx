@@ -124,8 +124,8 @@ export default function AdminPage() {
 
         {/* Legend */}
         <div className="flex gap-6 text-xs text-gray-500 mb-4">
-          <span>Variants: <span className={VARIANT_COLOR.stock}>S=Stock</span> / <span className={VARIANT_COLOR.clean}>C=Clean</span> / <span className={VARIANT_COLOR.performance}>P=Performance</span></span>
-          <span>Hunger bar fills as time passes since last auction of that variant</span>
+          <span>Non-common variants: <span className={VARIANT_COLOR.stock}>S=Stock</span> / <span className={VARIANT_COLOR.clean}>C=Clean</span> / <span className={VARIANT_COLOR.performance}>P=Performance</span></span>
+          <span>Common cars show a single hunger value (clean only)</span>
           <span className="text-yellow-500/60">Highlighted = currently on auction</span>
         </div>
 
@@ -137,11 +137,11 @@ export default function AdminPage() {
                 <th className="text-left px-4 py-3">Car</th>
                 <th className="text-left px-4 py-3">Cat</th>
                 <th className="text-left px-4 py-3 w-64">
-                  Hunger per Variant
-                  <span className="ml-1 text-gray-700 normal-case">(S / C / P)</span>
+                  Hunger
+                  <span className="ml-1 text-gray-700 normal-case">(S / C / P for non-common)</span>
                 </th>
-                <th className="text-left px-4 py-3">Chance each</th>
-                <th className="text-left px-4 py-3">Last Auctioned (S / C / P)</th>
+                <th className="text-left px-4 py-3">Chance</th>
+                <th className="text-left px-4 py-3">Last Auctioned</th>
                 <th className="text-left px-4 py-3">Supply</th>
                 <th className="text-left px-4 py-3">Status</th>
               </tr>
@@ -167,34 +167,43 @@ export default function AdminPage() {
                       </span>
                     </td>
 
-                    {/* Per-variant hunger */}
+                    {/* Hunger */}
                     <td className="px-4 py-3">
-                      <div className="flex gap-3">
-                        {car.variants.map((v) => (
-                          <div key={v.variant} className="flex flex-col gap-1 items-center">
-                            <span className={`text-xs font-bold ${v.exhausted ? 'text-gray-600' : VARIANT_COLOR[v.variant]}`}>
-                              {VARIANT_LABEL[v.variant]}
-                            </span>
-                            {v.exhausted ? (
-                              <span className="text-gray-700 text-xs font-mono">✓</span>
-                            ) : (
-                              <>
-                                <MiniHungerBar hunger={v.hunger} max={maxHunger} color={VARIANT_BAR[v.variant]} />
-                                <span className="text-white font-mono text-xs">{v.hunger}</span>
-                              </>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                      {car.category === 'common' ? (
+                        // Common: single hunger bar
+                        <div className="flex items-center gap-2">
+                          <MiniHungerBar hunger={car.variants[0].hunger} max={maxHunger} color="bg-gray-400" />
+                          <span className="text-white font-mono text-xs">{car.variants[0].hunger}</span>
+                        </div>
+                      ) : (
+                        // Non-common: S / C / P bars
+                        <div className="flex gap-3">
+                          {car.variants.map((v) => (
+                            <div key={v.variant} className="flex flex-col gap-1 items-center">
+                              <span className={`text-xs font-bold ${v.exhausted ? 'text-gray-600' : VARIANT_COLOR[v.variant]}`}>
+                                {VARIANT_LABEL[v.variant]}
+                              </span>
+                              {v.exhausted ? (
+                                <span className="text-gray-700 text-xs font-mono">✓</span>
+                              ) : (
+                                <>
+                                  <MiniHungerBar hunger={v.hunger} max={maxHunger} color={VARIANT_BAR[v.variant]} />
+                                  <span className="text-white font-mono text-xs">{v.hunger}</span>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </td>
 
-                    {/* Chance per variant */}
+                    {/* Chance */}
                     <td className="px-4 py-3 text-xs font-mono text-gray-400">
                       {car.variants.map((v) => (
                         <div key={v.variant}>
                           {v.exhausted || totalWeight === 0
                             ? <span className="text-gray-700">—</span>
-                            : <span className={VARIANT_COLOR[v.variant]}>
+                            : <span className={car.category === 'common' ? 'text-gray-300' : VARIANT_COLOR[v.variant]}>
                                 {((v.hunger / totalWeight) * 100).toFixed(1)}%
                               </span>
                           }
@@ -221,9 +230,11 @@ export default function AdminPage() {
                       ) : (
                         <span className={supplyFull ? 'text-red-400' : 'text-gray-300'}>
                           {car.supply_owned} / {car.supply_max}
-                          <span className="text-gray-600 ml-1">
-                            ({car.variants.map(v => v.count).join('/')})
-                          </span>
+                          {car.category !== 'common' && (
+                            <span className="text-gray-600 ml-1">
+                              ({car.variants.map(v => v.count).join('/')})
+                            </span>
+                          )}
                         </span>
                       )}
                     </td>
