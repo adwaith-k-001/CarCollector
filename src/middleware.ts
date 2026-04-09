@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const OFFLINE = true
+const OFFLINE = false
 
 export function middleware(request: NextRequest) {
   if (!OFFLINE) return NextResponse.next()
