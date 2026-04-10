@@ -220,8 +220,8 @@ export default function AuctionPage() {
       const diff = Math.max(0, new Date(auction.end_time).getTime() - Date.now())
       const newTimeLeft = Math.ceil(diff / 1000)
       setTimeLeft(newTimeLeft)
-      // When timer hits zero, switch to fast polling until next car arrives
-      if (newTimeLeft === 0 && !timerExpiredRef.current) {
+      // When timer is nearly up, switch to fast polling so we catch the transition ASAP
+      if (newTimeLeft <= 2 && !timerExpiredRef.current) {
         timerExpiredRef.current = true
         fetchAuction()
         fastPollingRef.current = setInterval(fetchAuction, 500)
