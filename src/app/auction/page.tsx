@@ -220,11 +220,19 @@ export default function AuctionPage() {
       const diff = Math.max(0, new Date(auction.end_time).getTime() - Date.now())
       const newTimeLeft = Math.ceil(diff / 1000)
       setTimeLeft(newTimeLeft)
-      // When timer is nearly up, switch to fast polling so we catch the transition ASAP
+      // At 2s, tell the server to expire the auction now, then fast-poll for the new car
       if (newTimeLeft <= 2 && !timerExpiredRef.current) {
         timerExpiredRef.current = true
-        fetchAuction()
-        fastPollingRef.current = setInterval(fetchAuction, 500)
+        const token = getToken()
+        if (token) {
+          fetch('/api/auction/expire', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          }).finally(() => {
+            fetchAuction()
+            fastPollingRef.current = setInterval(fetchAuction, 500)
+          })
+        }
       }
     }
     tick()
