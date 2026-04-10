@@ -122,7 +122,11 @@ export default function AuctionPage() {
   const [autoSkip, setAutoSkip] = useState(false)
   const [togglingAutoSkip, setTogglingAutoSkip] = useState(false)
   const [patchNotes, setPatchNotes] = useState<PatchNote[]>([])
+  // displayedAuction is what the car card renders — only swaps after new image preloads
+  const [displayedAuction, setDisplayedAuction] = useState<AuctionData | null>(null)
   const prevAuctionId = useRef<number | null>(null)
+  const fastPollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timerExpiredRef = useRef(false)
 
   const getToken = useCallback(() => {
     if (typeof window === 'undefined') return null
@@ -155,10 +159,29 @@ export default function AuctionPage() {
       setGarageCapacity(data.garage_capacity ?? 3)
       setAutoSkip(data.auto_skip ?? false)
 
-      // New auction started — clear bid messages
-      if (prevAuctionId.current !== null && prevAuctionId.current !== data.auction.id) {
+      const isNewAuction = prevAuctionId.current !== null && prevAuctionId.current !== data.auction.id
+      if (isNewAuction) {
+        // Stop fast-polling — new car has arrived
+        if (fastPollingRef.current) {
+          clearInterval(fastPollingRef.current)
+          fastPollingRef.current = null
+        }
+        timerExpiredRef.current = false
         setBidError('')
         setBidSuccess('')
+        // Preload the next car's image; swap displayed car only once it's ready
+        const img = new Image()
+        img.src = data.auction.car.image_path
+        let swapped = false
+        const swap = () => {
+          if (!swapped) { swapped = true; setDisplayedAuction(data.auction) }
+        }
+        img.onload = swap
+        img.onerror = swap
+        setTimeout(swap, 1500) // fallback: swap even if image is slow
+      } else {
+        // Same auction or initial load — update immediately
+        setDisplayedAuction(data.auction)
       }
       prevAuctionId.current = data.auction.id
     } catch {
@@ -189,18 +212,25 @@ export default function AuctionPage() {
     return () => clearInterval(interval)
   }, [fetchAuction])
 
-  // Countdown timer
+  // Countdown timer + fast-poll trigger when timer expires
   useEffect(() => {
     if (!auction) return
 
     const tick = () => {
       const diff = Math.max(0, new Date(auction.end_time).getTime() - Date.now())
-      setTimeLeft(Math.ceil(diff / 1000))
+      const newTimeLeft = Math.ceil(diff / 1000)
+      setTimeLeft(newTimeLeft)
+      // When timer hits zero, switch to fast polling until next car arrives
+      if (newTimeLeft === 0 && !timerExpiredRef.current) {
+        timerExpiredRef.current = true
+        fetchAuction()
+        fastPollingRef.current = setInterval(fetchAuction, 500)
+      }
     }
     tick()
     const interval = setInterval(tick, 250)
     return () => clearInterval(interval)
-  }, [auction?.end_time])
+  }, [auction?.end_time, fetchAuction])
 
   async function handleBid(percent: number) {
     setBidError('')
@@ -290,7 +320,7 @@ export default function AuctionPage() {
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
-  const cat = auction ? (CATEGORY_CONFIG[auction.car.category] ?? CATEGORY_CONFIG.common) : null
+  const cat = displayedAuction ? (CATEGORY_CONFIG[displayedAuction.car.category] ?? CATEGORY_CONFIG.common) : null
 
   return (
     <div className="min-h-screen bg-[#0a0a14]">
@@ -302,7 +332,7 @@ export default function AuctionPage() {
           <div className="flex items-center justify-center h-64">
             <div className="text-orange-400 text-lg animate-pulse">Loading auction...</div>
           </div>
-        ) : !auction ? (
+        ) : !displayedAuction || !auction ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-gray-400 text-lg">No active auction. Starting soon...</div>
           </div>
@@ -313,8 +343,8 @@ export default function AuctionPage() {
               <div className="relative aspect-video bg-[#0a0a14]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={auction.car.image_path}
-                  alt={auction.car.name}
+                  src={displayedAuction.car.image_path}
+                  alt={displayedAuction.car.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 400 225"><rect fill="%231a1a2e" width="400" height="225"/><text x="200" y="120" text-anchor="middle" fill="%23444" font-size="48">🚗</text></svg>'
@@ -339,26 +369,26 @@ export default function AuctionPage() {
 
               <div className="p-5">
                 <div className="flex items-start justify-between gap-3 mb-1">
-                  <h2 className="text-2xl font-bold text-white">{auction.car.name}</h2>
-                  <SupplyBadge owned={auction.supply_owned} max={auction.supply_max} />
+                  <h2 className="text-2xl font-bold text-white">{displayedAuction.car.name}</h2>
+                  <SupplyBadge owned={displayedAuction.supply_owned} max={displayedAuction.supply_max} />
                 </div>
-                <p className="text-gray-500 text-sm mb-2">Base Price: ${auction.car.base_price.toLocaleString()}</p>
+                <p className="text-gray-500 text-sm mb-2">Base Price: ${displayedAuction.car.base_price.toLocaleString()}</p>
 
                 {/* Variant badge — hidden for common cars */}
-                {auction.car.category !== 'common' && (() => {
-                  const vc = VARIANT_CONFIG[auction.variant] ?? VARIANT_CONFIG.clean
+                {displayedAuction.car.category !== 'common' && (() => {
+                  const vc = VARIANT_CONFIG[displayedAuction.variant] ?? VARIANT_CONFIG.clean
                   return (
                     <div className={`flex flex-wrap items-center gap-2 mb-3 p-2.5 rounded-xl border ${vc.bg} ${vc.border}`}>
-                      <span className={`font-bold text-sm ${vc.color}`}>{auction.variant_label}</span>
+                      <span className={`font-bold text-sm ${vc.color}`}>{displayedAuction.variant_label}</span>
                       <span className="text-gray-400 text-xs">·</span>
-                      <span className="text-gray-300 text-xs">{Math.round((auction.variant_income_mult - 1) * 100) > 0 ? '+' : ''}{Math.round((auction.variant_income_mult - 1) * 100)}% income</span>
+                      <span className="text-gray-300 text-xs">{Math.round((displayedAuction.variant_income_mult - 1) * 100) > 0 ? '+' : ''}{Math.round((displayedAuction.variant_income_mult - 1) * 100)}% income</span>
                       <span className="text-gray-400 text-xs">·</span>
                       <span className="text-gray-400 text-xs">{vc.decay}</span>
-                      {auction.variant_resale_bonus !== 0 && (
+                      {displayedAuction.variant_resale_bonus !== 0 && (
                         <>
                           <span className="text-gray-400 text-xs">·</span>
-                          <span className={`text-xs ${auction.variant_resale_bonus > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {auction.variant_resale_bonus > 0 ? '+' : ''}{Math.round(auction.variant_resale_bonus * 100)}% resale
+                          <span className={`text-xs ${displayedAuction.variant_resale_bonus > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {displayedAuction.variant_resale_bonus > 0 ? '+' : ''}{Math.round(displayedAuction.variant_resale_bonus * 100)}% resale
                           </span>
                         </>
                       )}
@@ -368,13 +398,13 @@ export default function AuctionPage() {
 
                 {/* Condition bar */}
                 {(() => {
-                  const pct = Math.round(auction.start_condition * 100)
+                  const pct = Math.round(displayedAuction.start_condition * 100)
                   const color = pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'
                   const label = pct >= 70 ? 'text-green-400' : pct >= 40 ? 'text-amber-400' : 'text-red-400'
                   return (
                     <div className="mb-4">
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-gray-400">Condition {auction.is_used ? '(used)' : '(new)'}</span>
+                        <span className="text-gray-400">Condition {displayedAuction.is_used ? '(used)' : '(new)'}</span>
                         <span className={`font-bold ${label}`}>{pct}%</span>
                       </div>
                       <div className="h-2 bg-[#0a0a14] rounded-full overflow-hidden">
@@ -386,31 +416,31 @@ export default function AuctionPage() {
 
                 {/* Stats */}
                 <div className="space-y-3">
-                  <StatBar label="Speed" value={auction.car.speed} max={320} color="bg-blue-500" />
-                  <StatBar label="Style" value={auction.car.style} max={100} color="bg-purple-500" />
-                  <StatBar label="Reliability" value={auction.car.reliability} max={100} color="bg-green-500" />
+                  <StatBar label="Speed" value={displayedAuction.car.speed} max={320} color="bg-blue-500" />
+                  <StatBar label="Style" value={displayedAuction.car.style} max={100} color="bg-purple-500" />
+                  <StatBar label="Reliability" value={displayedAuction.car.reliability} max={100} color="bg-green-500" />
                 </div>
 
                 <div className="mt-4 flex items-center justify-between bg-[#0a0a14] rounded-xl px-4 py-3">
                   <span className="text-gray-400 text-sm">Income Rate</span>
                   <span className="text-green-400 font-bold">
-                    ${auction.car.income_rate.toLocaleString()}<span className="text-gray-500 font-normal">/min</span>
+                    ${displayedAuction.car.income_rate.toLocaleString()}<span className="text-gray-500 font-normal">/min</span>
                   </span>
                 </div>
 
-                {auction.tune_stage > 0 && (
+                {displayedAuction.tune_stage > 0 && (
                   <div className="mt-2 flex items-center gap-2 bg-blue-500/5 border border-blue-500/20 rounded-xl px-4 py-2">
-                    <span className="text-blue-400 font-bold text-sm">Tune Stage {auction.tune_stage}</span>
-                    <span className="text-gray-400 text-xs">+{[0, 10, 25, 45][auction.tune_stage]}% income</span>
+                    <span className="text-blue-400 font-bold text-sm">Tune Stage {displayedAuction.tune_stage}</span>
+                    <span className="text-gray-400 text-xs">+{[0, 10, 25, 45][displayedAuction.tune_stage]}% income</span>
                   </div>
                 )}
 
                 {/* Car history (used cars only) */}
-                {auction.is_used && auction.car_history.length > 0 && (
+                {displayedAuction.is_used && displayedAuction.car_history.length > 0 && (
                   <div className="mt-4 bg-[#0a0a14] rounded-xl p-3">
                     <div className="text-xs text-gray-500 font-semibold mb-2 uppercase tracking-wide">Ownership History</div>
                     <div className="space-y-1.5">
-                      {auction.car_history.map((entry, i) => (
+                      {displayedAuction.car_history.map((entry, i) => (
                         <div key={i} className="flex items-center justify-between text-xs">
                           <span className="text-gray-400">
                             <span className="text-white font-medium">{entry.username}</span>
