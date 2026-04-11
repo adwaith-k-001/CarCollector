@@ -1,17 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import fs from 'fs'
+import { promises as fs } from 'fs'
 import path from 'path'
 
 export const dynamic = 'force-dynamic'
+
+const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp'])
+
+const EXT_CONTENT_TYPE: Record<string, string> = {
+  jpg:  'image/jpeg',
+  jpeg: 'image/jpeg',
+  png:  'image/png',
+  webp: 'image/webp',
+}
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = req.nextUrl
     const name = searchParams.get('name')
-    const ext = searchParams.get('ext') || 'jpg'
+    const rawExt = (searchParams.get('ext') || 'jpg').toLowerCase()
 
     if (!name) {
       return new NextResponse('Missing name parameter', { status: 400 })
+    }
+
+    if (!ALLOWED_EXTENSIONS.has(rawExt)) {
+      return new NextResponse('Invalid extension', { status: 400 })
     }
 
     // Images live in public/cars/ (served as static assets in production)
@@ -20,15 +33,21 @@ export async function GET(req: NextRequest) {
     // Security: sanitize name to prevent path traversal
     const safeName = path.basename(name)
 
-    let imagePath = path.join(carsDir, `${safeName}.${ext}`)
+    let imagePath = path.join(carsDir, `${safeName}.${rawExt}`)
 
-    // If requested extension not found, try the other
-    if (!fs.existsSync(imagePath)) {
-      const altExt = ext === 'jpg' ? 'jpeg' : 'jpg'
+    // If requested extension not found, try the sibling jpg/jpeg alternative only
+    try {
+      await fs.access(imagePath)
+    } catch {
+      const altExt = rawExt === 'jpg' ? 'jpeg' : rawExt === 'jpeg' ? 'jpg' : null
+      if (!altExt) {
+        return new NextResponse('Image not found', { status: 404 })
+      }
       const altPath = path.join(carsDir, `${safeName}.${altExt}`)
-      if (fs.existsSync(altPath)) {
+      try {
+        await fs.access(altPath)
         imagePath = altPath
-      } else {
+      } catch {
         return new NextResponse('Image not found', { status: 404 })
       }
     }
@@ -36,15 +55,16 @@ export async function GET(req: NextRequest) {
     // Verify final path stays within carsDir
     const resolvedPath = path.resolve(imagePath)
     const resolvedCarsDir = path.resolve(carsDir)
-    if (!resolvedPath.startsWith(resolvedCarsDir + path.sep) && resolvedPath !== resolvedCarsDir) {
+    if (!resolvedPath.startsWith(resolvedCarsDir + path.sep)) {
       return new NextResponse('Forbidden', { status: 403 })
     }
 
-    const imageBuffer = fs.readFileSync(imagePath)
+    const imageBuffer = await fs.readFile(imagePath)
+    const finalExt = path.extname(imagePath).slice(1).toLowerCase()
 
     return new NextResponse(imageBuffer, {
       headers: {
-        'Content-Type': 'image/jpeg',
+        'Content-Type': EXT_CONTENT_TYPE[finalExt] ?? 'application/octet-stream',
         'Cache-Control': 'public, max-age=86400',
       },
     })

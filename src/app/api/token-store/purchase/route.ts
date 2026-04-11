@@ -22,31 +22,54 @@ export async function POST(req: NextRequest) {
 
   const tokenPrice = Number(item.token_price)
 
-  // Load buyer token balance
+  // Load buyer token balance (pre-check before entering transaction)
   const buyerRows = await prisma.$queryRaw<{ tokens: number }[]>`
     SELECT tokens FROM "User" WHERE id = ${user.userId}
   `
   const buyerTokens = buyerRows[0] ? Number(buyerRows[0].tokens) : 0
   if (buyerTokens < tokenPrice) return NextResponse.json({ error: 'Not enough tokens' }, { status: 402 })
 
-  // Deduct tokens, mark item as owned, record purchase
-  await prisma.$executeRaw`
-    UPDATE "User" SET tokens = tokens - ${tokenPrice} WHERE id = ${user.userId}
-  `
-  await prisma.$executeRaw`
-    UPDATE "TokenStoreItem" SET owner_id = ${user.userId} WHERE id = ${item_id}
-  `
-  await prisma.$executeRaw`
-    INSERT INTO "TokenStorePurchase" (user_id, item_id, token_cost)
-    VALUES (${user.userId}, ${item_id}, ${tokenPrice})
-  `
+  // Atomic: deduct tokens, claim item, record purchase — guarded against races
+  let tokensRemaining = 0
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Re-check item availability inside the transaction
+      const claimed = await tx.$executeRaw`
+        UPDATE "TokenStoreItem" SET owner_id = ${user.userId}
+        WHERE id = ${item_id} AND owner_id IS NULL AND status != 'coming_soon'
+      `
+      if (claimed === 0) throw Object.assign(new Error('already_owned'), { code: 'already_owned' })
 
-  const updatedRows = await prisma.$queryRaw<{ tokens: number }[]>`
-    SELECT tokens FROM "User" WHERE id = ${user.userId}
-  `
+      // Deduct tokens only if the user still has enough (re-check inside tx)
+      const deducted = await tx.$executeRaw`
+        UPDATE "User" SET tokens = tokens - ${tokenPrice}
+        WHERE id = ${user.userId} AND tokens >= ${tokenPrice}
+      `
+      if (deducted === 0) throw Object.assign(new Error('insufficient_tokens'), { code: 'insufficient_tokens' })
+
+      await tx.$executeRaw`
+        INSERT INTO "TokenStorePurchase" (user_id, item_id, token_cost)
+        VALUES (${user.userId}, ${item_id}, ${tokenPrice})
+      `
+
+      const updatedRows = await tx.$queryRaw<{ tokens: number }[]>`
+        SELECT tokens FROM "User" WHERE id = ${user.userId}
+      `
+      tokensRemaining = updatedRows[0] ? Number(updatedRows[0].tokens) : 0
+    })
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code
+    if (code === 'already_owned') {
+      return NextResponse.json({ error: 'Already owned' }, { status: 409 })
+    }
+    if (code === 'insufficient_tokens') {
+      return NextResponse.json({ error: 'Not enough tokens' }, { status: 402 })
+    }
+    throw err
+  }
 
   return NextResponse.json({
     success: true,
-    tokens_remaining: updatedRows[0] ? Number(updatedRows[0].tokens) : 0,
+    tokens_remaining: tokensRemaining,
   })
 }

@@ -106,20 +106,17 @@ export async function register() {
         },
       ]
 
-      // Use $executeRawUnsafe so null values (e.g. land_sqft) are handled correctly
       for (const h of houses) {
-        const landSqft = h.land_sqft === null ? 'NULL' : String(h.land_sqft)
-        const escape   = (s: string | null) => s === null ? 'NULL' : `'${s.replace(/'/g, "''")}'`
-        await prisma.$executeRawUnsafe(`
+        await prisma.$executeRaw`
           INSERT INTO "TokenStoreItem"
             (id, category, name, location, property_type, bedrooms, bathrooms,
              area_sqft, land_sqft, floor_level, image_path, token_price,
              real_value, description, status)
           VALUES (
-            ${escape(h.id)}, ${escape(h.category)}, ${escape(h.name)}, ${escape(h.location)},
-            ${escape(h.property_type)}, ${h.bedrooms}, ${h.bathrooms}, ${h.area_sqft},
-            ${landSqft}, ${escape(h.floor_level)}, ${escape(h.image_path)},
-            ${h.token_price}, ${h.real_value}, ${escape(h.description)}, ${escape(h.status)}
+            ${h.id}, ${h.category}, ${h.name}, ${h.location},
+            ${h.property_type}, ${h.bedrooms}, ${h.bathrooms}, ${h.area_sqft},
+            ${h.land_sqft}, ${h.floor_level}, ${h.image_path},
+            ${h.token_price}, ${h.real_value}, ${h.description}, ${h.status}
           )
           ON CONFLICT (id) DO UPDATE SET
             token_price   = EXCLUDED.token_price,
@@ -127,7 +124,7 @@ export async function register() {
             description   = EXCLUDED.description,
             status        = EXCLUDED.status,
             image_path    = EXCLUDED.image_path
-        `)
+        `
       }
 
     } catch (err) {

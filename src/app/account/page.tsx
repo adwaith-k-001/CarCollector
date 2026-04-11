@@ -42,6 +42,36 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+// ── Time range ────────────────────────────────────────────────────────────────
+
+type TimeRange = '1h' | '6h' | '1d' | '7d' | 'all'
+
+const RANGE_LABELS: { key: TimeRange; label: string }[] = [
+  { key: '1h',  label: '1H'  },
+  { key: '6h',  label: '6H'  },
+  { key: '1d',  label: '1D'  },
+  { key: '7d',  label: '7D'  },
+  { key: 'all', label: 'All' },
+]
+
+const RANGE_MS: Record<Exclude<TimeRange, 'all'>, number> = {
+  '1h': 3_600_000,
+  '6h': 6 * 3_600_000,
+  '1d': 24 * 3_600_000,
+  '7d': 7 * 24 * 3_600_000,
+}
+
+function filterByRange(data: { date: string; value: number }[], range: TimeRange) {
+  if (range === 'all') return data
+  const cutoff = Date.now() - RANGE_MS[range]
+  const filtered = data.filter(d => new Date(d.date).getTime() >= cutoff)
+  // Always include the last point before the cutoff so the line starts at the edge
+  if (filtered.length === 0 && data.length > 0) return [data[data.length - 1]]
+  const firstIdx = data.indexOf(filtered[0])
+  if (firstIdx > 0) return [data[firstIdx - 1], ...filtered]
+  return filtered
+}
+
 // ── SVG Line Chart ────────────────────────────────────────────────────────────
 
 function LineChart({ data }: { data: { date: string; value: number }[] }) {
@@ -69,10 +99,20 @@ function LineChart({ data }: { data: { date: string; value: number }[] }) {
   ].join(' ')
 
   const ticks = [minV, (minV + maxV) / 2, maxV].map(v => ({ v: Math.round(v), y: yScale(v) }))
-  const xLabels = [0, Math.floor(data.length / 2), data.length - 1].map(i => ({
-    label: new Date(data[i].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-    x: xScale(i),
-  }))
+
+  const spanMs = new Date(data[data.length - 1].date).getTime() - new Date(data[0].date).getTime()
+  const TICK_COUNT = 5
+  const xLabels = Array.from({ length: TICK_COUNT }, (_, i) => {
+    const idx = Math.round((i / (TICK_COUNT - 1)) * (data.length - 1))
+    const d   = new Date(data[idx].date)
+    const label = spanMs < 24 * 3_600_000
+      ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+      : spanMs < 7 * 24 * 3_600_000
+        ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' +
+          d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+        : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    return { label, x: xScale(idx) }
+  })
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full">
@@ -87,7 +127,7 @@ function LineChart({ data }: { data: { date: string; value: number }[] }) {
         </g>
       ))}
       {xLabels.map((l, i) => (
-        <text key={i} x={l.x} y={H - 4} textAnchor="middle" fontSize="10" fill="#6b7280">{l.label}</text>
+        <text key={i} x={l.x} y={H - 4} textAnchor="middle" fontSize="9" fill="#6b7280">{l.label}</text>
       ))}
       <line x1={PAD.left} x2={PAD.left} y1={PAD.top} y2={PAD.top + iH} stroke="#374151" strokeWidth="1" />
     </svg>
@@ -155,11 +195,12 @@ function StatCard({ label, value, sub, color = 'text-white' }: {
 
 export default function AccountPage() {
   const router = useRouter()
-  const [stats, setStats]       = useState<Stats | null>(null)
-  const [tab, setTab]           = useState<'overview' | 'settings'>('overview')
-  const [username, setUsername] = useState('')
-  const [balance, setBalance]   = useState(0)
-  const [loading, setLoading]   = useState(true)
+  const [stats, setStats]         = useState<Stats | null>(null)
+  const [tab, setTab]             = useState<'overview' | 'settings'>('overview')
+  const [username, setUsername]   = useState('')
+  const [balance, setBalance]     = useState(0)
+  const [loading, setLoading]     = useState(true)
+  const [timeRange, setTimeRange] = useState<TimeRange>('1d')
 
   const getToken = useCallback(() => {
     if (typeof window === 'undefined') return null
@@ -177,11 +218,18 @@ export default function AccountPage() {
     if (!token) { router.replace('/auth'); return }
     setUsername(localStorage.getItem('username') || '')
 
-    fetch('/api/account/stats', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => { if (r.status === 401) { router.replace('/auth'); throw new Error() } return r.json() })
-      .then(data => { setStats(data); setBalance(data.user.balance) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    const fetchStats = (isInitial = false) => {
+      fetch('/api/account/stats', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => { if (r.status === 401) { router.replace('/auth'); throw new Error() } return r.json() })
+        .then(data => { setStats(data); setBalance(data.user.balance) })
+        .catch(() => {})
+        .finally(() => { if (isInitial) setLoading(false) })
+    }
+
+    fetchStats(true)
+
+    const interval = setInterval(() => fetchStats(false), 5 * 60 * 1000)
+    return () => clearInterval(interval)
   }, [getToken, router])
 
   if (loading) return (
@@ -255,8 +303,23 @@ export default function AccountPage() {
                 </div>
                 <div className="text-sm font-bold text-amber-400">{fmt(trading.total_networth)}</div>
               </div>
+              <div className="flex gap-1 mb-3">
+                {RANGE_LABELS.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setTimeRange(key)}
+                    className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                      timeRange === key
+                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                        : 'text-gray-500 hover:text-gray-300 border border-transparent'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <div className="h-44">
-                <LineChart data={networth_history} />
+                <LineChart data={filterByRange(networth_history, timeRange)} />
               </div>
             </div>
 

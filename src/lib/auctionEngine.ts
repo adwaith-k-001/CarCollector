@@ -13,6 +13,8 @@ const INCOME_INTERVAL_MS   = 60 * 1000
 const INTEGRITY_INTERVAL_MS = 60 * 1000
 
 let lastIntegrityCheck = 0
+let lastIncomeRun = 0
+const INCOME_RUN_INTERVAL_MS = 10_000 // fetch all users at most every 10s
 
 export async function advanceAuctionState(): Promise<void> {
   await _advanceAuction()
@@ -419,6 +421,10 @@ async function _startNewAuction(): Promise<void> {
 // ─── Income Generation ───────────────────────────────────────────────────────
 
 async function _generateIncome(): Promise<void> {
+  const nowMs = Date.now()
+  if (nowMs - lastIncomeRun < INCOME_RUN_INTERVAL_MS) return
+  lastIncomeRun = nowMs
+
   const users = await prisma.user.findMany({
     where:   { cars: { some: {} } },
     include: { cars: { include: { car: { select: { income_rate: true } } } } },

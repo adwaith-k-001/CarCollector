@@ -38,6 +38,15 @@ export async function POST(req: NextRequest) {
   if (!instance_key || !to_user_id || offer_price == null) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
+  if (typeof instance_key !== 'string' || instance_key.length > 100) {
+    return NextResponse.json({ error: 'Invalid instance_key' }, { status: 400 })
+  }
+  if (typeof to_user_id !== 'number' || !Number.isInteger(to_user_id) || to_user_id <= 0) {
+    return NextResponse.json({ error: 'Invalid to_user_id' }, { status: 400 })
+  }
+  if (typeof offer_price !== 'number' || !isFinite(offer_price) || offer_price <= 0) {
+    return NextResponse.json({ error: 'Invalid offer_price' }, { status: 400 })
+  }
   if (user.userId === to_user_id) {
     return NextResponse.json({ error: 'Cannot trade with yourself' }, { status: 400 })
   }
@@ -131,6 +140,12 @@ async function handleCounterOffer(userId: number, body: { offer_id: number; offe
   const { offer_id, offer_price } = body
   if (!offer_id || offer_price == null) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  }
+  if (typeof offer_id !== 'number' || !Number.isInteger(offer_id) || offer_id <= 0) {
+    return NextResponse.json({ error: 'Invalid offer_id' }, { status: 400 })
+  }
+  if (typeof offer_price !== 'number' || !isFinite(offer_price) || offer_price <= 0) {
+    return NextResponse.json({ error: 'Invalid offer_price' }, { status: 400 })
   }
 
   const offer = await prisma.tradeOffer.findUnique({

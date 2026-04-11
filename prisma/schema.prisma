@@ -95,6 +95,9 @@ model UserCar {
 
   user User @relation(fields: [user_id], references: [id])
   car  Car  @relation(fields: [car_id], references: [id])
+
+  @@index([user_id])
+  @@index([car_id])
 }
 
 // Cars sold by players, waiting to be re-auctioned
@@ -110,6 +113,8 @@ model AvailableCarInstance {
   listed_at      DateTime @default(now())
 
   car Car @relation(fields: [car_id], references: [id])
+
+  @@index([car_id])
 }
 
 // Cars that reached 20% condition and were decommissioned
@@ -123,6 +128,8 @@ model JunkyardCar {
   last_username  String?
 
   car Car @relation(fields: [car_id], references: [id])
+
+  @@index([car_id])
 }
 
 // Full ownership + event log per car instance
@@ -139,6 +146,9 @@ model CarHistoryEntry {
 
   car  Car   @relation(fields: [car_id], references: [id])
   user User? @relation(fields: [user_id], references: [id])
+
+  @@index([instance_key])
+  @@index([car_id])
 }
 
 model Bid {
@@ -150,6 +160,9 @@ model Bid {
 
   auction Auction @relation(fields: [auction_id], references: [id])
   user    User    @relation(fields: [user_id], references: [id])
+
+  @@index([auction_id])
+  @@index([user_id])
 }
 
 // P2P trade offers between players
@@ -168,6 +181,11 @@ model TradeOffer {
   from_user  User @relation("TradeOffersFrom", fields: [from_user_id], references: [id])
   to_user    User @relation("TradeOffersTo",   fields: [to_user_id],   references: [id])
   car        Car  @relation(fields: [car_id], references: [id])
+
+  @@index([from_user_id])
+  @@index([to_user_id])
+  @@index([expires_at])
+  @@index([status])
 }
 
 model Season {

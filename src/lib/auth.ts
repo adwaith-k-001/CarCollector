@@ -1,7 +1,14 @@
 import jwt from 'jsonwebtoken'
 import { NextRequest } from 'next/server'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'car-auction-secret-2024-change-in-production'
+if (!process.env.JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable must be set in production')
+  }
+  console.warn('[auth] WARNING: JWT_SECRET not set — using insecure development default')
+}
+
+const JWT_SECRET = process.env.JWT_SECRET || 'car-auction-dev-only-insecure-default'
 
 export interface JWTPayload {
   userId: number
