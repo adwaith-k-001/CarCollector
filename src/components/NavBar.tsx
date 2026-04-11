@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import { useTheme } from './ThemeProvider'
 
 export type ActivePage = 'auction' | 'garage' | 'leaderboard' | 'junkyard' | 'trade' | 'account' | 'seasons'
 
@@ -20,14 +21,16 @@ const NAV_ITEMS: { page: ActivePage; label: string; href: string; icon: string }
 ]
 
 export default function NavBar({ activePage, username, balance, onLogout }: NavBarProps) {
+  const { theme, toggle } = useTheme()
+
   return (
     <>
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
-      <nav className="border-b border-[#2a2a3e] bg-[#0d0d1a]/90 backdrop-blur-sm sticky top-0 z-50">
+      <nav className="border-b border-[var(--border)] bg-[var(--bg-nav)] backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2">
 
           {/* Brand */}
-          <span className="text-lg font-bold text-white shrink-0">🏎️ CarAuction</span>
+          <span className="text-lg font-bold text-[var(--text-primary)] shrink-0">🏎️ CarAuction</span>
 
           {/* Desktop nav links — hidden on mobile */}
           <div className="hidden md:flex gap-1 flex-1 justify-center">
@@ -38,7 +41,7 @@ export default function NavBar({ activePage, username, balance, onLogout }: NavB
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                   activePage === page
                     ? 'bg-orange-500/20 text-orange-400'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    : 'text-gray-400 hover:text-[var(--text-primary)] hover:bg-black/5'
                 }`}
               >
                 {label}
@@ -46,8 +49,17 @@ export default function NavBar({ activePage, username, balance, onLogout }: NavB
             ))}
           </div>
 
-          {/* Right: user info */}
+          {/* Right: theme toggle + user info */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Theme toggle button */}
+            <button
+              onClick={toggle}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-[var(--text-primary)] hover:bg-black/5 transition-colors text-base"
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+
             {username && (
               <div className="text-right hidden sm:block">
                 <div className="text-xs text-gray-500 leading-none mb-0.5">{username}</div>
@@ -74,7 +86,7 @@ export default function NavBar({ activePage, username, balance, onLogout }: NavB
       </nav>
 
       {/* ── Mobile bottom tab bar ────────────────────────────────────────────── */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0d0d1a]/95 backdrop-blur-sm border-t border-[#2a2a3e]">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--bg-nav-mob)] backdrop-blur-sm border-t border-[var(--border)]">
         <div className="flex">
           {NAV_ITEMS.map(({ page, label, href, icon }) => (
             <Link

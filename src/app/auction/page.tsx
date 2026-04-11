@@ -78,7 +78,7 @@ function StatBar({ label, value, max = 100, color = 'bg-orange-500' }: {
         <span>{label}</span>
         <span className="text-white font-medium">{value}</span>
       </div>
-      <div className="h-2 bg-[#0a0a14] rounded-full overflow-hidden">
+      <div className="h-2 bg-[var(--bg-deep)] rounded-full overflow-hidden">
         <div
           className={`h-full ${color} rounded-full transition-all duration-500`}
           style={{ width: `${pct}%` }}
@@ -331,7 +331,7 @@ export default function AuctionPage() {
   const cat = displayedAuction ? (CATEGORY_CONFIG[displayedAuction.car.category] ?? CATEGORY_CONFIG.common) : null
 
   return (
-    <div className="min-h-screen bg-[#0a0a14]">
+    <div className="min-h-screen bg-[var(--bg-deep)]">
       <PatchNotesModal patches={patchNotes} onDismiss={dismissPatchNotes} />
       <NavBar activePage="auction" username={username} balance={balance} onLogout={handleLogout} />
 
@@ -347,8 +347,8 @@ export default function AuctionPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left: Car Image + Identity */}
-            <div className="bg-[#12121e] border border-[#2a2a3e] rounded-2xl overflow-hidden">
-              <div className="relative aspect-video bg-[#0a0a14]">
+            <div className="bg-[var(--bg-card-2)] border border-[var(--border)] rounded-2xl overflow-hidden">
+              <div className="relative aspect-video bg-[var(--bg-deep)]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={displayedAuction.car.image_path}
@@ -415,7 +415,7 @@ export default function AuctionPage() {
                         <span className="text-gray-400">Condition {displayedAuction.is_used ? '(used)' : '(new)'}</span>
                         <span className={`font-bold ${label}`}>{pct}%</span>
                       </div>
-                      <div className="h-2 bg-[#0a0a14] rounded-full overflow-hidden">
+                      <div className="h-2 bg-[var(--bg-deep)] rounded-full overflow-hidden">
                         <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
@@ -429,7 +429,7 @@ export default function AuctionPage() {
                   <StatBar label="Reliability" value={displayedAuction.car.reliability} max={100} color="bg-green-500" />
                 </div>
 
-                <div className="mt-4 flex items-center justify-between bg-[#0a0a14] rounded-xl px-4 py-3">
+                <div className="mt-4 flex items-center justify-between bg-[var(--bg-deep)] rounded-xl px-4 py-3">
                   <span className="text-gray-400 text-sm">Income Rate</span>
                   <span className="text-green-400 font-bold">
                     ${displayedAuction.car.income_rate.toLocaleString()}<span className="text-gray-500 font-normal">/min</span>
@@ -445,7 +445,7 @@ export default function AuctionPage() {
 
                 {/* Car history (used cars only) */}
                 {displayedAuction.is_used && displayedAuction.car_history.length > 0 && (
-                  <div className="mt-4 bg-[#0a0a14] rounded-xl p-3">
+                  <div className="mt-4 bg-[var(--bg-deep)] rounded-xl p-3">
                     <div className="text-xs text-gray-500 font-semibold mb-2 uppercase tracking-wide">Ownership History</div>
                     <div className="space-y-1.5">
                       {displayedAuction.car_history.map((entry, i) => (
@@ -472,7 +472,7 @@ export default function AuctionPage() {
             {/* Right: Bidding Panel */}
             <div className="flex flex-col gap-4">
               {/* Current Bid Status */}
-              <div className="bg-[#12121e] border border-[#2a2a3e] rounded-2xl p-6">
+              <div className="bg-[var(--bg-card-2)] border border-[var(--border)] rounded-2xl p-6">
                 <div className="text-sm text-gray-500 mb-1">Current Highest Bid</div>
                 <div className="text-4xl font-bold text-white mb-3">
                   ${auction.current_highest_bid.toLocaleString()}
@@ -493,7 +493,7 @@ export default function AuctionPage() {
               </div>
 
               {/* Bid Panel */}
-              <div className="bg-[#12121e] border border-[#2a2a3e] rounded-2xl p-6">
+              <div className="bg-[var(--bg-card-2)] border border-[var(--border)] rounded-2xl p-6">
                 <h3 className="text-white font-semibold mb-1">Place Your Bid</h3>
                 <p className="text-xs text-gray-500 mb-4">
                   {auction.highest_bidder === null
@@ -525,7 +525,7 @@ export default function AuctionPage() {
                             key={pct}
                             onClick={() => handleBid(pct)}
                             disabled={bidding || timeLeft === 0 || !canAfford}
-                            className="bg-[#0a0a14] hover:bg-orange-500/10 disabled:opacity-40 disabled:cursor-not-allowed border border-[#2a2a3e] hover:border-orange-500/60 rounded-xl py-4 transition-all text-center"
+                            className="bg-[var(--bg-deep)] hover:bg-orange-500/10 disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--border)] hover:border-orange-500/60 rounded-xl py-4 transition-all text-center"
                           >
                             <div className="text-orange-400 font-bold text-base">+{pct}%</div>
                             <div className="text-white font-semibold text-sm mt-0.5">
@@ -555,7 +555,7 @@ export default function AuctionPage() {
 
               {/* Your Balance + Garage Slots */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-[#12121e] border border-[#2a2a3e] rounded-2xl p-5 flex items-center justify-between">
+                <div className="bg-[var(--bg-card-2)] border border-[var(--border)] rounded-2xl p-5 flex items-center justify-between">
                   <div>
                     <div className="text-xs text-gray-500">Your Balance</div>
                     <div className="text-xl font-bold text-green-400">
@@ -564,7 +564,7 @@ export default function AuctionPage() {
                   </div>
                   <div className="text-2xl">💰</div>
                 </div>
-                <div className="bg-[#12121e] border border-[#2a2a3e] rounded-2xl p-5 flex items-center justify-between">
+                <div className="bg-[var(--bg-card-2)] border border-[var(--border)] rounded-2xl p-5 flex items-center justify-between">
                   <div>
                     <div className="text-xs text-gray-500">Garage Slots</div>
                     <div className="text-xl font-bold text-orange-400">
@@ -585,7 +585,7 @@ export default function AuctionPage() {
 
               {/* Skip vote */}
               {auction && (
-                <div className="bg-[#12121e] border border-[#2a2a3e] rounded-2xl p-4">
+                <div className="bg-[var(--bg-card-2)] border border-[var(--border)] rounded-2xl p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-gray-500">Not interested in this car?</span>
                     <span className="text-xs text-gray-500">
@@ -593,7 +593,7 @@ export default function AuctionPage() {
                     </span>
                   </div>
                   {/* Vote progress bar */}
-                  <div className="h-1 bg-[#0a0a14] rounded-full overflow-hidden mb-3">
+                  <div className="h-1 bg-[var(--bg-deep)] rounded-full overflow-hidden mb-3">
                     <div
                       className="h-full bg-amber-500 rounded-full transition-all duration-300"
                       style={{
@@ -620,7 +620,7 @@ export default function AuctionPage() {
                 <div className={`rounded-2xl p-4 border transition-colors ${
                   autoSkip
                     ? 'bg-purple-500/10 border-purple-500/40'
-                    : 'bg-[#12121e] border-[#2a2a3e]'
+                    : 'bg-[var(--bg-card-2)] border-[var(--border)]'
                 }`}>
                   <div className="flex items-center justify-between mb-1">
                     <div>

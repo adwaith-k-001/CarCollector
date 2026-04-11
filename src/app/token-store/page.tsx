@@ -68,7 +68,7 @@ function HouseCard({
   const isBuying     = buying === item.id
 
   return (
-    <div className="bg-[#0d0d1a] border border-gray-800 rounded-2xl overflow-hidden flex flex-col group hover:border-amber-500/30 transition-colors">
+    <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl overflow-hidden flex flex-col group hover:border-amber-500/30 transition-colors">
 
       {/* Image */}
       <div className="relative h-52 bg-gray-900 overflow-hidden">
@@ -153,7 +153,7 @@ function HouseCard({
         </ul>
 
         {/* Price + CTA */}
-        <div className="flex items-center justify-between gap-3 pt-4 border-t border-gray-800">
+        <div className="flex items-center justify-between gap-3 pt-4 border-t border-[var(--border)]">
           <div>
             <div className="text-2xl font-black text-amber-400">{item.token_price.toLocaleString()}</div>
             <div className="text-xs text-amber-600 -mt-0.5">tokens</div>
@@ -269,11 +269,11 @@ export default function TokenStorePage() {
   const visibleItems = items.filter(i => i.category === category)
 
   if (loading) return (
-    <div className="min-h-screen bg-[#07070f] flex items-center justify-center text-gray-400">Loading…</div>
+    <div className="min-h-screen bg-[var(--bg-page)] flex items-center justify-center text-gray-400">Loading…</div>
   )
 
   return (
-    <div className="min-h-screen bg-[#07070f] text-white pb-20 md:pb-0">
+    <div className="min-h-screen bg-[var(--bg-page)] text-white pb-20 md:pb-0">
       <NavBar activePage="seasons" username={username} balance={balance} onLogout={handleLogout} />
 
       {/* Toast */}
@@ -297,7 +297,7 @@ export default function TokenStorePage() {
             <p className="text-sm text-gray-500 mt-1">Spend your season tokens on real-world assets</p>
           </div>
           {/* Token balance */}
-          <div className="bg-[#0d0d1a] border border-amber-500/30 rounded-2xl px-6 py-4 text-center">
+          <div className="bg-[var(--bg-card)] border border-amber-500/30 rounded-2xl px-6 py-4 text-center">
             <div className="text-xs text-gray-500 uppercase tracking-widest mb-1">Your Balance</div>
             <div className="text-3xl font-black text-amber-400">{myTokens.toLocaleString()}</div>
             <div className="text-xs text-amber-600 mt-0.5">tokens</div>
@@ -315,8 +315,8 @@ export default function TokenStorePage() {
                 cat.available
                   ? category === cat.id
                     ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                    : 'bg-[#0d0d1a] text-gray-400 border border-gray-800 hover:border-gray-600 hover:text-white'
-                  : 'bg-[#0d0d1a] text-gray-700 border border-gray-800/50 cursor-not-allowed'
+                    : 'bg-[var(--bg-card)] text-gray-400 border border-[var(--border)] hover:border-gray-600 hover:text-white'
+                  : 'bg-[var(--bg-card)] text-gray-700 border border-[var(--border)]/50 cursor-not-allowed'
               }`}
             >
               <span>{cat.icon}</span>
@@ -346,7 +346,7 @@ export default function TokenStorePage() {
         )}
 
         {/* Token info footer */}
-        <div className="mt-10 bg-[#0d0d1a] border border-gray-800 rounded-2xl p-5 text-sm text-gray-500">
+        <div className="mt-10 bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5 text-sm text-gray-500">
           <span className="text-gray-400 font-medium">How tokens work: </span>
           Tokens are earned at the end of each season based on your net worth and time spent in the top 3.
           Once spent, tokens cannot be refunded. Purchased items are permanently yours.

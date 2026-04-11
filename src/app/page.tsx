@@ -11,7 +11,7 @@ export default function Home() {
   }, [router])
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[#0a0a14]">
+    <div className="flex items-center justify-center min-h-screen bg-[var(--bg-deep)]">
       <div className="text-orange-400 text-xl animate-pulse">Loading...</div>
     </div>
   )

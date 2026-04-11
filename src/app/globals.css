@@ -2,6 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme tokens ──────────────────────────────────────────────────────────── */
+
+:root {
+  --bg-page:    #07070f;
+  --bg-deep:    #0a0a14;
+  --bg-card:    #0d0d1a;
+  --bg-card-2:  #12121e;
+  --bg-nav:     rgba(13, 13, 26, 0.90);
+  --bg-nav-mob: rgba(13, 13, 26, 0.95);
+  --border:     #2a2a3e;
+  --text-primary: #ffffff;
+  --chart-grid: #1f2937;
+  --chart-axis: #374151;
+}
+
+[data-theme="light"] {
+  --bg-page:    #f8fafc;
+  --bg-deep:    #e2e8f0;
+  --bg-card:    #ffffff;
+  --bg-card-2:  #f1f5f9;
+  --bg-nav:     rgba(255, 255, 255, 0.92);
+  --bg-nav-mob: rgba(255, 255, 255, 0.97);
+  --border:     #e2e8f0;
+  --text-primary: #0f172a;
+  --chart-grid: #e2e8f0;
+  --chart-axis: #cbd5e1;
+  color-scheme: light;
+}
+
+/* ── text-white becomes theme-aware ────────────────────────────────────────── */
+
+[data-theme="light"] .text-white {
+  color: var(--text-primary) !important;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────────── */
+
 * {
   box-sizing: border-box;
   padding: 0;
@@ -16,12 +53,14 @@ body {
 }
 
 body {
-  background: #0a0a14;
-  color: #ffffff;
+  background: var(--bg-page);
+  color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
-/* Custom scrollbar */
+/* ── Custom scrollbar ─────────────────────────────────────────────────────── */
+
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -32,13 +71,18 @@ body {
   background: #f97316;
   border-radius: 3px;
 }
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #e2e8f0;
+}
 
-/* Stat bar animation */
+/* ── Stat bar animation ───────────────────────────────────────────────────── */
+
 .stat-bar {
   transition: width 0.5s ease;
 }
 
-/* Glow effects */
+/* ── Glow effects ─────────────────────────────────────────────────────────── */
+
 .glow-orange {
   box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
 }

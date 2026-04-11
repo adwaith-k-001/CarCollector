@@ -123,14 +123,14 @@ function LineChart({ data }: { data: { date: string; value: number }[] }) {
       {/* Gridlines */}
       {ticks.map((t, i) => (
         <line key={`g${i}`} x1={PAD.left} x2={PAD.left + iW} y1={t.y} y2={t.y}
-          stroke="#1f2937" strokeWidth="1" />
+          stroke="var(--chart-grid)" strokeWidth="1" />
       ))}
       <polygon points={areaPoints} fill="#22c55e" fillOpacity="0.07" />
       <polyline points={points} fill="none" stroke="#22c55e" strokeWidth="2" strokeLinejoin="round" />
       {/* Y-axis ticks + labels */}
       {ticks.map((t, i) => (
         <g key={i}>
-          <line x1={PAD.left - 4} x2={PAD.left} y1={t.y} y2={t.y} stroke="#4b5563" strokeWidth="1" />
+          <line x1={PAD.left - 4} x2={PAD.left} y1={t.y} y2={t.y} stroke="var(--chart-axis)" strokeWidth="1" />
           <text x={PAD.left - 8} y={t.y + 4} textAnchor="end" fontSize="10" fill="#6b7280">
             {t.v >= 1000 ? `$${(t.v / 1000).toFixed(1)}k` : `$${t.v}`}
           </text>
@@ -139,7 +139,7 @@ function LineChart({ data }: { data: { date: string; value: number }[] }) {
       {xLabels.map((l, i) => (
         <text key={i} x={l.x} y={H - 4} textAnchor="middle" fontSize="9" fill="#6b7280">{l.label}</text>
       ))}
-      <line x1={PAD.left} x2={PAD.left} y1={PAD.top} y2={PAD.top + iH} stroke="#374151" strokeWidth="1" />
+      <line x1={PAD.left} x2={PAD.left} y1={PAD.top} y2={PAD.top + iH} stroke="var(--chart-axis)" strokeWidth="1" />
     </svg>
   )
 }
@@ -182,7 +182,7 @@ function BarChart({ data }: { data: { date: string; count: number }[] }) {
           </g>
         )
       })}
-      <line x1={PAD.left} x2={PAD.left + iW} y1={PAD.top + iH} y2={PAD.top + iH} stroke="#374151" strokeWidth="1" />
+      <line x1={PAD.left} x2={PAD.left + iW} y1={PAD.top + iH} y2={PAD.top + iH} stroke="var(--chart-axis)" strokeWidth="1" />
     </svg>
   )
 }
@@ -193,7 +193,7 @@ function StatCard({ label, value, sub, color = 'text-white' }: {
   label: string; value: string; sub?: string; color?: string
 }) {
   return (
-    <div className="bg-[#0d0d1a] border border-gray-800 rounded-xl p-4">
+    <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-4">
       <div className="text-gray-500 text-xs mb-1">{label}</div>
       <div className={`text-xl font-bold ${color}`}>{value}</div>
       {sub && <div className="text-gray-600 text-xs mt-0.5">{sub}</div>}
@@ -243,7 +243,7 @@ export default function AccountPage() {
   }, [getToken, router])
 
   if (loading) return (
-    <div className="min-h-screen bg-[#07070f] flex items-center justify-center text-gray-400">Loading...</div>
+    <div className="min-h-screen bg-[var(--bg-page)] flex items-center justify-center text-gray-400">Loading...</div>
   )
   if (!stats) return null
 
@@ -252,13 +252,13 @@ export default function AccountPage() {
   const memberDays = Math.floor((Date.now() - new Date(user.created_at).getTime()) / (1000 * 60 * 60 * 24))
 
   return (
-    <div className="min-h-screen bg-[#07070f] text-white pb-20 md:pb-0">
+    <div className="min-h-screen bg-[var(--bg-page)] text-white pb-20 md:pb-0">
       <NavBar activePage="account" username={username} balance={balance} onLogout={handleLogout} />
 
       <div className="max-w-4xl mx-auto px-4 py-6">
 
         {/* Profile header */}
-        <div className="bg-[#0d0d1a] border border-gray-800 rounded-xl p-5 mb-6 flex items-center justify-between flex-wrap gap-4">
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-5 mb-6 flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-2xl font-bold text-orange-400">
               {user.username[0].toUpperCase()}
@@ -280,7 +280,7 @@ export default function AccountPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-[#0d0d1a] border border-gray-800 rounded-xl p-1 w-fit">
+        <div className="flex gap-1 mb-6 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-1 w-fit">
           {(['overview', 'settings'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-5 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${
@@ -305,7 +305,7 @@ export default function AccountPage() {
             </div>
 
             {/* Net Worth chart */}
-            <div className="bg-[#0d0d1a] border border-gray-800 rounded-xl p-4">
+            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <div className="text-sm font-semibold text-white">Net Worth Over Time</div>
@@ -334,7 +334,7 @@ export default function AccountPage() {
             </div>
 
             {/* Bid activity chart */}
-            <div className="bg-[#0d0d1a] border border-gray-800 rounded-xl p-4">
+            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <div className="text-sm font-semibold text-white">Bid Activity</div>
@@ -366,7 +366,7 @@ export default function AccountPage() {
 
         {/* ── Settings Tab ───────────────────────────────────────────────────── */}
         {tab === 'settings' && (
-          <div className="bg-[#0d0d1a] border border-gray-800 rounded-xl p-8 text-center">
+          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-8 text-center">
             <div className="text-gray-600 text-sm">Settings coming soon</div>
           </div>
         )}

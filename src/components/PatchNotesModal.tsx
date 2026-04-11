@@ -15,9 +15,9 @@ export default function PatchNotesModal({ patches, onDismiss }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4">
-      <div className="bg-[#12121f] border border-[#2a2a3e] rounded-2xl w-full max-w-md shadow-2xl max-h-[85vh] flex flex-col">
+      <div className="bg-[var(--bg-card-2)] border border-[var(--border)] rounded-2xl w-full max-w-md shadow-2xl max-h-[85vh] flex flex-col">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-[#2a2a3e]">
+        <div className="px-6 pt-6 pb-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-3">
             <span className="text-2xl">🆕</span>
             <div>
@@ -38,7 +38,7 @@ export default function PatchNotesModal({ patches, onDismiss }: Props) {
           </ul>
 
           {older.length > 0 && (
-            <div className="mt-5 pt-4 border-t border-[#2a2a3e]">
+            <div className="mt-5 pt-4 border-t border-[var(--border)]">
               <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-3">Previous Updates</p>
               {older.reverse().map((p) => (
                 <div key={p.id} className="mb-3">
@@ -55,7 +55,7 @@ export default function PatchNotesModal({ patches, onDismiss }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 pb-6 pt-4 border-t border-[#2a2a3e]">
+        <div className="px-6 pb-6 pt-4 border-t border-[var(--border)]">
           <button
             onClick={onDismiss}
             className="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm transition-colors"

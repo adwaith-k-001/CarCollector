@@ -98,16 +98,16 @@ export default function AdminPage() {
   }, [fetchData])
 
   if (loading) return (
-    <div className="min-h-screen bg-[#07070f] flex items-center justify-center text-gray-400">Loading...</div>
+    <div className="min-h-screen bg-[var(--bg-page)] flex items-center justify-center text-gray-400">Loading...</div>
   )
   if (error) return (
-    <div className="min-h-screen bg-[#07070f] flex items-center justify-center text-red-400 text-lg">{error}</div>
+    <div className="min-h-screen bg-[var(--bg-page)] flex items-center justify-center text-red-400 text-lg">{error}</div>
   )
 
   const maxHunger = Math.max(...cars.flatMap(c => c.variants.map(v => v.hunger)), 1)
 
   return (
-    <div className="min-h-screen bg-[#07070f] text-white p-6">
+    <div className="min-h-screen bg-[var(--bg-page)] text-white p-6">
       <div className="max-w-7xl mx-auto">
 
         {/* Header */}
@@ -135,10 +135,10 @@ export default function AdminPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-[#0d0d1a] border border-gray-800 rounded-xl overflow-hidden">
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider">
+              <tr className="border-b border-[var(--border)] text-gray-500 text-xs uppercase tracking-wider">
                 <th className="text-left px-4 py-3">Car</th>
                 <th className="text-left px-4 py-3">Cat</th>
                 <th className="text-left px-4 py-3 w-64">
@@ -158,7 +158,7 @@ export default function AdminPage() {
                 return (
                   <tr
                     key={car.id}
-                    className={`border-b border-gray-800/50 ${
+                    className={`border-b border-[var(--border)]/50 ${
                       car.is_on_auction ? 'bg-yellow-500/5' : i % 2 === 0 ? '' : 'bg-white/[0.02]'
                     } ${supplyFull ? 'opacity-35' : ''}`}
                   >

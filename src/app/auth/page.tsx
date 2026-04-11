@@ -63,8 +63,8 @@ export default function AuthPage() {
   // Offline earnings screen
   if (offlineEarnings) {
     return (
-      <div className="min-h-screen bg-[#0a0a14] flex items-center justify-center p-4">
-        <div className="bg-[#12121e] border border-green-500/30 rounded-2xl p-10 text-center max-w-sm w-full shadow-2xl">
+      <div className="min-h-screen bg-[var(--bg-deep)] flex items-center justify-center p-4">
+        <div className="bg-[var(--bg-card-2)] border border-green-500/30 rounded-2xl p-10 text-center max-w-sm w-full shadow-2xl">
           <div className="text-6xl mb-4">💰</div>
           <h2 className="text-2xl font-bold text-white mb-2">Welcome Back!</h2>
           <p className="text-gray-400 text-sm mb-6">
@@ -81,7 +81,7 @@ export default function AuthPage() {
             </div>
           </div>
           <p className="text-gray-500 text-xs">Redirecting to auction...</p>
-          <div className="mt-3 h-1 bg-[#0a0a14] rounded-full overflow-hidden">
+          <div className="mt-3 h-1 bg-[var(--bg-deep)] rounded-full overflow-hidden">
             <div className="h-full bg-green-500 rounded-full animate-[shrink_3s_linear_forwards]" />
           </div>
         </div>
@@ -90,7 +90,7 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a14] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--bg-deep)] flex items-center justify-center p-4">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl" />
@@ -106,9 +106,9 @@ export default function AuthPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-[#12121e] border border-[#2a2a3e] rounded-2xl p-8 shadow-2xl">
+        <div className="bg-[var(--bg-card-2)] border border-[var(--border)] rounded-2xl p-8 shadow-2xl">
           {/* Toggle */}
-          <div className="flex rounded-xl bg-[#0a0a14] p-1 mb-6">
+          <div className="flex rounded-xl bg-[var(--bg-deep)] p-1 mb-6">
             <button
               onClick={() => { setMode('login'); setError('') }}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -141,7 +141,7 @@ export default function AuthPage() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   placeholder="Your racer name"
-                  className="w-full bg-[#0a0a14] border border-[#2a2a3e] rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full bg-[var(--bg-deep)] border border-[var(--border)] rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors"
                 />
               </div>
             )}
@@ -154,7 +154,7 @@ export default function AuthPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@example.com"
-                className="w-full bg-[#0a0a14] border border-[#2a2a3e] rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors"
+                className="w-full bg-[var(--bg-deep)] border border-[var(--border)] rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors"
               />
             </div>
 
@@ -166,7 +166,7 @@ export default function AuthPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder={mode === 'signup' ? 'Min. 6 characters' : '••••••••'}
-                className="w-full bg-[#0a0a14] border border-[#2a2a3e] rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors"
+                className="w-full bg-[var(--bg-deep)] border border-[var(--border)] rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors"
               />
             </div>
 

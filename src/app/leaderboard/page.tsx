@@ -122,7 +122,7 @@ export default function LeaderboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a14]">
+    <div className="min-h-screen bg-[var(--bg-deep)]">
       <NavBar activePage="leaderboard" username={username} balance={balance} onLogout={handleLogout} />
 
       <main className="max-w-5xl mx-auto px-4 py-8 pb-24 md:pb-8">
@@ -145,7 +145,7 @@ export default function LeaderboardPage() {
         ) : (
           <div className="space-y-3">
             {entries.map((entry) => {
-              const style = RANK_STYLES[entry.rank] ?? { medal: '', bg: 'bg-[#12121e]', border: 'border-[#2a2a3e]' }
+              const style = RANK_STYLES[entry.rank] ?? { medal: '', bg: 'bg-[var(--bg-card-2)]', border: 'border-[var(--border)]' }
               return (
                 <div
                   key={entry.user_id}

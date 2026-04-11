@@ -81,7 +81,7 @@ function SlotBar({ used, capacity }: { used: number; capacity: number }) {
         <span className="text-gray-500">Slots Used</span>
         <span className="font-bold text-white">{used} / {capacity}</span>
       </div>
-      <div className="h-1.5 bg-[#0a0a14] rounded-full overflow-hidden">
+      <div className="h-1.5 bg-[var(--bg-deep)] rounded-full overflow-hidden">
         <div
           className={`h-full ${color} rounded-full transition-all duration-500`}
           style={{ width: `${Math.min(pct, 100)}%` }}
@@ -304,11 +304,11 @@ export default function GaragePage() {
   const totalIncome = garageData?.total_income_rate ?? 0
 
   return (
-    <div className="min-h-screen bg-[#0a0a14]">
+    <div className="min-h-screen bg-[var(--bg-deep)]">
       {/* Sell confirmation modal */}
       {confirmSell && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="bg-[#12121f] border border-[#2a2a3e] rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
+          <div className="bg-[var(--bg-card-2)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
             <h3 className="text-lg font-bold text-white mb-1">Confirm Sale</h3>
             <p className="text-sm text-gray-400 mb-4">
               Are you sure you want to sell <span className="text-white font-semibold">{confirmSell.name}</span>?
@@ -321,7 +321,7 @@ export default function GaragePage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setConfirmSell(null)}
-                className="flex-1 py-2 rounded-lg border border-[#2a2a3e] text-gray-400 hover:text-white text-sm transition-colors"
+                className="flex-1 py-2 rounded-lg border border-[var(--border)] text-gray-400 hover:text-white text-sm transition-colors"
               >
                 Cancel
               </button>
@@ -380,7 +380,7 @@ export default function GaragePage() {
         {/* Stats row */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           {/* Balance */}
-          <div className="bg-[#12121e] border border-[#2a2a3e] rounded-2xl p-5 flex items-center gap-4">
+          <div className="bg-[var(--bg-card-2)] border border-[var(--border)] rounded-2xl p-5 flex items-center gap-4">
             <span className="text-3xl">💰</span>
             <div>
               <div className="text-xs text-gray-500">Balance</div>
@@ -391,7 +391,7 @@ export default function GaragePage() {
           </div>
 
           {/* Income */}
-          <div className="bg-[#12121e] border border-[#2a2a3e] rounded-2xl p-5 flex items-center gap-4">
+          <div className="bg-[var(--bg-card-2)] border border-[var(--border)] rounded-2xl p-5 flex items-center gap-4">
             <span className="text-3xl">📈</span>
             <div>
               <div className="text-xs text-gray-500">Income Rate</div>
@@ -402,7 +402,7 @@ export default function GaragePage() {
           </div>
 
           {/* Garage slots + upgrade */}
-          <div className="bg-[#12121e] border border-[#2a2a3e] rounded-2xl p-5">
+          <div className="bg-[var(--bg-card-2)] border border-[var(--border)] rounded-2xl p-5">
             <div className="flex items-center gap-3 mb-3">
               <span className="text-3xl">🏠</span>
               <div>
@@ -464,10 +464,10 @@ export default function GaragePage() {
                 return (
                   <div
                     key={car.usercar_id}
-                    className={`bg-[#12121e] border ${cat.border} rounded-2xl overflow-hidden hover:scale-[1.01] transition-transform duration-200`}
+                    className={`bg-[var(--bg-card-2)] border ${cat.border} rounded-2xl overflow-hidden hover:scale-[1.01] transition-transform duration-200`}
                   >
                     {/* Car image */}
-                    <div className="relative aspect-video bg-[#0a0a14]">
+                    <div className="relative aspect-video bg-[var(--bg-deep)]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={car.image_path}
@@ -515,7 +515,7 @@ export default function GaragePage() {
                       })()}
 
                       {/* Stats row */}
-                      <div className="grid grid-cols-3 gap-2 mb-3 bg-[#0a0a14] rounded-xl p-3">
+                      <div className="grid grid-cols-3 gap-2 mb-3 bg-[var(--bg-deep)] rounded-xl p-3">
                         <StatMini label="Speed" value={car.speed} />
                         <StatMini label="Style" value={car.style} />
                         <StatMini label="Reliab." value={car.reliability} />
@@ -532,7 +532,7 @@ export default function GaragePage() {
                               <span className="text-gray-400">Condition</span>
                               <span className={`font-bold ${label}`}>{pct}%</span>
                             </div>
-                            <div className="h-1.5 bg-[#0a0a14] rounded-full overflow-hidden">
+                            <div className="h-1.5 bg-[var(--bg-deep)] rounded-full overflow-hidden">
                               <div className={`h-full ${bar} rounded-full transition-all`} style={{ width: `${pct}%` }} />
                             </div>
                           </div>

@@ -106,7 +106,7 @@ function RankTimeCard({ rank, ms, seasonMs }: { rank: 1 | 2 | 3; ms: number; sea
   }[rank]
 
   return (
-    <div className={`bg-[#0d0d1a] border ${config.border} rounded-xl p-4`}>
+    <div className={`bg-[var(--bg-card)] border ${config.border} rounded-xl p-4`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="text-lg">{config.crown}</span>
@@ -183,7 +183,7 @@ export default function SeasonsPage() {
   const countdownMs = useCountdown(countdownTarget)
 
   if (loading) return (
-    <div className="min-h-screen bg-[#07070f] flex items-center justify-center text-gray-400">Loading...</div>
+    <div className="min-h-screen bg-[var(--bg-page)] flex items-center justify-center text-gray-400">Loading...</div>
   )
   if (!data) return null
 
@@ -199,7 +199,7 @@ export default function SeasonsPage() {
       : 'Season ended'
 
   return (
-    <div className="min-h-screen bg-[#07070f] text-white pb-20 md:pb-0">
+    <div className="min-h-screen bg-[var(--bg-page)] text-white pb-20 md:pb-0">
       <NavBar activePage="seasons" username={username} balance={balance} onLogout={handleLogout} />
 
       <div className="max-w-2xl mx-auto px-4 py-8">
@@ -220,13 +220,13 @@ export default function SeasonsPage() {
         </div>
 
         {/* Countdown */}
-        <div className="bg-[#0d0d1a] border border-gray-800 rounded-2xl p-8 mb-6">
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-8 mb-6">
           {season.phase === 'ended' ? (
             <div className="text-center text-gray-500 text-sm">Season has ended</div>
           ) : (
             <CountdownDisplay ms={countdownMs} label={countdownLabel} />
           )}
-          <div className="flex justify-between text-xs text-gray-600 mt-6 pt-4 border-t border-gray-800">
+          <div className="flex justify-between text-xs text-gray-600 mt-6 pt-4 border-t border-[var(--border)]">
             <span>Started {new Date(season.start_time).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
             <span>Ends {new Date(season.end_time).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
             <span>Season 2 starts {new Date(season.cooldown_end).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
@@ -234,7 +234,7 @@ export default function SeasonsPage() {
         </div>
 
         {/* Token preview */}
-        <div className="bg-[#0d0d1a] border border-amber-500/20 rounded-2xl p-6 mb-6">
+        <div className="bg-[var(--bg-card)] border border-amber-500/20 rounded-2xl p-6 mb-6">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-xs text-gray-500 uppercase tracking-widest mb-1">Tokens at end of season</div>
@@ -246,7 +246,7 @@ export default function SeasonsPage() {
             </div>
             <div className="text-5xl opacity-30">🪙</div>
           </div>
-          <div className="mt-4 pt-4 border-t border-gray-800 text-xs text-gray-600">
+          <div className="mt-4 pt-4 border-t border-[var(--border)] text-xs text-gray-600">
             Final tokens = net worth ÷ 100 · multiplied by time held in top 3
           </div>
         </div>
@@ -264,7 +264,7 @@ export default function SeasonsPage() {
         {/* Token store */}
         <Link
           href="/token-store"
-          className="w-full bg-[#0d0d1a] border border-amber-500/30 rounded-2xl p-5 flex items-center justify-between hover:border-amber-500/60 hover:bg-amber-500/5 transition-colors group"
+          className="w-full bg-[var(--bg-card)] border border-amber-500/30 rounded-2xl p-5 flex items-center justify-between hover:border-amber-500/60 hover:bg-amber-500/5 transition-colors group"
         >
           <div className="text-left">
             <div className="text-sm font-semibold text-white">Token Store</div>

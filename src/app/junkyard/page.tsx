@@ -127,7 +127,7 @@ export default function JunkyardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a14]">
+    <div className="min-h-screen bg-[var(--bg-deep)]">
       <NavBar activePage="junkyard" username={username} balance={balance} onLogout={handleLogout} />
 
       <main className="max-w-6xl mx-auto px-4 py-8 pb-24 md:pb-8">
@@ -156,10 +156,10 @@ export default function JunkyardPage() {
               return (
                 <div
                   key={jc.id}
-                  className={`bg-[#12121e] border ${cat.border} rounded-2xl overflow-hidden opacity-80`}
+                  className={`bg-[var(--bg-card-2)] border ${cat.border} rounded-2xl overflow-hidden opacity-80`}
                 >
                   {/* Image */}
-                  <div className="relative aspect-video bg-[#0a0a14] grayscale">
+                  <div className="relative aspect-video bg-[var(--bg-deep)] grayscale">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={jc.car.image_path}
@@ -191,7 +191,7 @@ export default function JunkyardPage() {
                         <span className="text-gray-400">Final Condition</span>
                         <span className="text-red-400 font-bold">{Math.round(jc.condition * 100)}%</span>
                       </div>
-                      <div className="h-1.5 bg-[#0a0a14] rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-[var(--bg-deep)] rounded-full overflow-hidden">
                         <div className="h-full bg-red-600 rounded-full" style={{ width: `${Math.round(jc.condition * 100)}%` }} />
                       </div>
                     </div>
@@ -199,7 +199,7 @@ export default function JunkyardPage() {
                     {/* History toggle */}
                     <button
                       onClick={() => toggleExpand(jc.id)}
-                      className="w-full text-xs text-gray-500 hover:text-gray-300 transition-colors py-1 border border-[#2a2a3e] rounded-lg"
+                      className="w-full text-xs text-gray-500 hover:text-gray-300 transition-colors py-1 border border-[var(--border)] rounded-lg"
                     >
                       {isEx ? '▲ Hide history' : `▼ Show history (${jc.history.length} events)`}
                     </button>

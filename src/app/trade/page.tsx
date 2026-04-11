@@ -132,7 +132,7 @@ function OfferModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-      <div className="bg-[#12121f] border border-[#2a2a3e] rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
+      <div className="bg-[var(--bg-card-2)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
         <h3 className="text-lg font-bold text-white mb-1">Make an Offer</h3>
         <p className="text-sm text-gray-400 mb-4">
           {car.name} — owned by <span className="text-white font-medium">{targetName}</span>
@@ -154,14 +154,14 @@ function OfferModal({
           step={100}
           value={price}
           onChange={(e) => { setPrice(Number(e.target.value)); setErr('') }}
-          className="w-full bg-[#0d0d1a] border border-[#2a2a3e] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500 mb-1"
+          className="w-full bg-[var(--bg-card)] border border-[var(--border)] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500 mb-1"
         />
         {err && <p className="text-xs text-red-400 mb-3">{err}</p>}
 
         <div className="flex gap-2 mt-4">
           <button
             onClick={onClose}
-            className="flex-1 py-2 rounded-lg border border-[#2a2a3e] text-gray-400 hover:text-white text-sm transition-colors"
+            className="flex-1 py-2 rounded-lg border border-[var(--border)] text-gray-400 hover:text-white text-sm transition-colors"
           >
             Cancel
           </button>
@@ -201,7 +201,7 @@ function CounterModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-      <div className="bg-[#12121f] border border-[#2a2a3e] rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
+      <div className="bg-[var(--bg-card-2)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
         <h3 className="text-lg font-bold text-white mb-1">Counter Offer</h3>
         <p className="text-sm text-gray-400 mb-4">{offer.car.name}</p>
 
@@ -221,14 +221,14 @@ function CounterModal({
           step={100}
           value={price}
           onChange={(e) => { setPrice(Number(e.target.value)); setErr('') }}
-          className="w-full bg-[#0d0d1a] border border-[#2a2a3e] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500 mb-1"
+          className="w-full bg-[var(--bg-card)] border border-[var(--border)] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500 mb-1"
         />
         {err && <p className="text-xs text-red-400 mb-3">{err}</p>}
 
         <div className="flex gap-2 mt-4">
           <button
             onClick={onClose}
-            className="flex-1 py-2 rounded-lg border border-[#2a2a3e] text-gray-400 hover:text-white text-sm transition-colors"
+            className="flex-1 py-2 rounded-lg border border-[var(--border)] text-gray-400 hover:text-white text-sm transition-colors"
           >
             Cancel
           </button>
@@ -336,7 +336,7 @@ function BrowseTab({
           placeholder="Search by car name or owner..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-[#0d0d1a] border border-[#2a2a3e] rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-orange-500"
+          className="w-full bg-[var(--bg-card)] border border-[var(--border)] rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-orange-500"
         />
       </div>
 
@@ -354,7 +354,7 @@ function BrowseTab({
             return (
               <div key={c.instance_key} className={`rounded-2xl border ${cat.border} ${cat.bg} overflow-hidden flex flex-col`}>
                 {/* Car image */}
-                <div className="relative h-36 bg-[#0a0a14] overflow-hidden">
+                <div className="relative h-36 bg-[var(--bg-deep)] overflow-hidden">
                   <CarImg src={c.car.image_path} alt={c.car.name} />
                   <div className="absolute top-2 left-2 flex gap-1">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${cat.bg} ${cat.border} ${cat.color}`}>
@@ -386,11 +386,11 @@ function BrowseTab({
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="bg-[#0a0a14] rounded-lg p-2">
+                    <div className="bg-[var(--bg-deep)] rounded-lg p-2">
                       <div className="text-gray-500">Market Value</div>
                       <div className="text-white font-semibold">{fmtMoney(c.market_value)}</div>
                     </div>
-                    <div className="bg-[#0a0a14] rounded-lg p-2">
+                    <div className="bg-[var(--bg-deep)] rounded-lg p-2">
                       <div className="text-gray-500">Min. Offer</div>
                       <div className="text-yellow-400 font-semibold">{fmtMoney(c.min_offer)}</div>
                     </div>
@@ -513,7 +513,7 @@ function MyOffersTab({
     return (
       <div className={`rounded-2xl border ${cat.border} ${cat.bg} p-4 flex gap-4`}>
         {/* Thumbnail */}
-        <div className="w-20 h-14 rounded-xl overflow-hidden bg-[#0a0a14] flex-shrink-0">
+        <div className="w-20 h-14 rounded-xl overflow-hidden bg-[var(--bg-deep)] flex-shrink-0">
           <CarImg src={offer.car.image_path} alt={offer.car.name} />
         </div>
 
@@ -678,14 +678,14 @@ export default function TradePage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-[#0d0d1a] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--bg-card)] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0d1a] text-white">
+    <div className="min-h-screen bg-[var(--bg-card)] text-white">
       <NavBar activePage="trade" username={username} balance={balance} onLogout={handleLogout} />
 
       {/* Toast */}
@@ -706,7 +706,7 @@ export default function TradePage() {
         </div>
 
         {/* Tab bar */}
-        <div className="flex gap-2 mb-6 border-b border-[#2a2a3e] pb-0">
+        <div className="flex gap-2 mb-6 border-b border-[var(--border)] pb-0">
           <button
             onClick={() => setTab('browse')}
             className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-b-2 -mb-px ${
