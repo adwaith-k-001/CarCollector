@@ -79,7 +79,7 @@ function LineChart({ data }: { data: { date: string; value: number }[] }) {
     <div className="flex items-center justify-center h-full text-gray-600 text-sm">Not enough data yet</div>
   )
 
-  const W = 600, H = 180, PAD = { top: 16, right: 16, bottom: 32, left: 72 }
+  const W = 600, H = 280, PAD = { top: 16, right: 16, bottom: 32, left: 72 }
   const iW = W - PAD.left - PAD.right
   const iH = H - PAD.top - PAD.bottom
 
@@ -98,7 +98,11 @@ function LineChart({ data }: { data: { date: string; value: number }[] }) {
     `${PAD.left + iW},${PAD.top + iH}`,
   ].join(' ')
 
-  const ticks = [minV, (minV + maxV) / 2, maxV].map(v => ({ v: Math.round(v), y: yScale(v) }))
+  const Y_TICKS = 10
+  const ticks = Array.from({ length: Y_TICKS }, (_, i) => {
+    const v = minV + (i / (Y_TICKS - 1)) * rangeV
+    return { v: Math.round(v), y: yScale(v) }
+  })
 
   const spanMs = new Date(data[data.length - 1].date).getTime() - new Date(data[0].date).getTime()
   const TICK_COUNT = 5
@@ -116,13 +120,19 @@ function LineChart({ data }: { data: { date: string; value: number }[] }) {
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full">
+      {/* Gridlines */}
+      {ticks.map((t, i) => (
+        <line key={`g${i}`} x1={PAD.left} x2={PAD.left + iW} y1={t.y} y2={t.y}
+          stroke="#1f2937" strokeWidth="1" />
+      ))}
       <polygon points={areaPoints} fill="#22c55e" fillOpacity="0.07" />
       <polyline points={points} fill="none" stroke="#22c55e" strokeWidth="2" strokeLinejoin="round" />
+      {/* Y-axis ticks + labels */}
       {ticks.map((t, i) => (
         <g key={i}>
           <line x1={PAD.left - 4} x2={PAD.left} y1={t.y} y2={t.y} stroke="#4b5563" strokeWidth="1" />
           <text x={PAD.left - 8} y={t.y + 4} textAnchor="end" fontSize="10" fill="#6b7280">
-            {`$${(t.v / 1000).toFixed(0)}k`}
+            {t.v >= 1000 ? `$${(t.v / 1000).toFixed(1)}k` : `$${t.v}`}
           </text>
         </g>
       ))}
@@ -318,7 +328,7 @@ export default function AccountPage() {
                   </button>
                 ))}
               </div>
-              <div className="h-44">
+              <div className="h-72">
                 <LineChart data={filterByRange(networth_history, timeRange)} />
               </div>
             </div>
