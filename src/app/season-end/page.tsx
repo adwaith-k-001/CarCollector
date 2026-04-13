@@ -271,6 +271,19 @@ export default function SeasonEndPage() {
           </p>
         </div>
 
+        {/* ── Apology banner ── */}
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex gap-3 items-start">
+          <div className="text-amber-400 text-lg shrink-0 mt-0.5">⚠️</div>
+          <div>
+            <div className="text-sm font-semibold text-amber-300 mb-1">Extended Maintenance — We&apos;re Sorry!</div>
+            <p className="text-xs text-amber-200/70 leading-relaxed">
+              We apologize for the unexpected extra downtime. Season 2 has been delayed by one day and will
+              now open at midnight tonight instead of last night as originally planned. Thank you for your
+              patience!
+            </p>
+          </div>
+        </div>
+
         {/* ── Countdown to next season ── */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-7">
           <div className="text-xs text-gray-500 uppercase tracking-widest text-center mb-5">
