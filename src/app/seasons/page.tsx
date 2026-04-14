@@ -229,7 +229,7 @@ export default function SeasonsPage() {
           <div className="flex justify-between text-xs text-gray-600 mt-6 pt-4 border-t border-[var(--border)]">
             <span>Started {new Date(season.start_time).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
             <span>Ends {new Date(season.end_time).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-            <span>Season 2 starts {new Date(season.cooldown_end).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+            <span>Season {season.season_number + 1} starts {new Date(season.cooldown_end).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
           </div>
         </div>
 
