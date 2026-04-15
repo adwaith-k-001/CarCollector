@@ -1,0 +1,1 @@
+ALTER TABLE "Season" ADD COLUMN "tokens_awarded" BOOLEAN NOT NULL DEFAULT false;

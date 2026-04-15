@@ -14,9 +14,77 @@ const TOKEN_RATE = 100 // same as seasons/current
 //   rank1 held fraction → up to +0.5x
 //   rank2 held fraction → up to +0.25x
 //   rank3 held fraction → up to +0.10x
-// Example: held rank 1 for 50% of season → 1.25x total
 function computeMultiplier(rank1Frac: number, rank2Frac: number, rank3Frac: number): number {
   return 1.0 + rank1Frac * 0.5 + rank2Frac * 0.25 + rank3Frac * 0.1
+}
+
+// ── Compute net worth for a single user ───────────────────────────────────────
+async function getUserNetWorth(userId: number): Promise<number> {
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      balance: true,
+      garage_capacity: true,
+      cars: {
+        select: {
+          purchase_time: true, condition: true, tune_stage: true, variant: true,
+          car: { select: { base_price: true } },
+        },
+      },
+    },
+  })
+  if (!u) return 0
+  let carValue = 0
+  for (const uc of u.cars) {
+    const v    = getVariant(uc.variant)
+    const cond = currentCondition(uc.condition, uc.purchase_time, v.decay_multiplier)
+    carValue  += calculateSellValue(uc.car.base_price, cond, uc.tune_stage, v.resale_bonus)
+  }
+  return Math.round(u.balance + carValue + totalGarageUpgradeCost(u.garage_capacity))
+}
+
+// ── Award tokens to all users for this season (runs once at cooldown start) ──
+async function awardTokensForSeason(seasonId: number, seasonMs: number) {
+  const allUsers = await prisma.user.findMany({ select: { id: true } })
+
+  await prisma.$transaction(async (tx) => {
+    for (const u of allUsers) {
+      // Compute rank times for this user
+      const logs = await tx.leaderboardPositionLog.findMany({
+        where: { season_id: seasonId, user_id: u.id },
+      })
+      const rankMs: Record<1 | 2 | 3, number> = { 1: 0, 2: 0, 3: 0 }
+      for (const log of logs) {
+        const end = log.exited_at ? log.exited_at.getTime() : Date.now()
+        const ms  = Math.max(0, end - log.entered_at.getTime())
+        if (log.rank === 1) rankMs[1] += ms
+        if (log.rank === 2) rankMs[2] += ms
+        if (log.rank === 3) rankMs[3] += ms
+      }
+      const rank1Frac = seasonMs > 0 ? Math.min(1, rankMs[1] / seasonMs) : 0
+      const rank2Frac = seasonMs > 0 ? Math.min(1, rankMs[2] / seasonMs) : 0
+      const rank3Frac = seasonMs > 0 ? Math.min(1, rankMs[3] / seasonMs) : 0
+      const multiplier = computeMultiplier(rank1Frac, rank2Frac, rank3Frac)
+
+      // Net worth at season end = current state (users are locked out during cooldown)
+      const netWorth  = await getUserNetWorth(u.id)
+      const baseTokens  = Math.floor(netWorth / TOKEN_RATE)
+      const finalTokens = Math.floor(baseTokens * multiplier)
+
+      if (finalTokens > 0) {
+        await tx.user.update({
+          where: { id: u.id },
+          data: { tokens: { increment: finalTokens } },
+        })
+      }
+    }
+
+    // Mark season as awarded
+    await tx.season.update({
+      where: { id: seasonId },
+      data: { tokens_awarded: true },
+    })
+  })
 }
 
 export async function GET(req: NextRequest) {
@@ -30,6 +98,14 @@ export async function GET(req: NextRequest) {
   let phase: 'active' | 'cooldown' | 'ended' = 'active'
   if (now >= season.cooldown_end) phase = 'ended'
   else if (now >= season.end_time) phase = 'cooldown'
+
+  // Award tokens to all users once when cooldown begins
+  if (phase === 'cooldown' && !season.tokens_awarded) {
+    const seasonMs = season.end_time.getTime() - season.start_time.getTime()
+    await awardTokensForSeason(season.id, seasonMs)
+    // Reload season to reflect tokens_awarded = true
+    await prisma.season.findUnique({ where: { id: season.id } })
+  }
 
   // Build full leaderboard to get rank
   const allUsers = await prisma.user.findMany({

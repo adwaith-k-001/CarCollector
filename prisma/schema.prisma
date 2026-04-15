@@ -189,12 +189,13 @@ model TradeOffer {
 }
 
 model Season {
-  id            Int      @id @default(autoincrement())
-  season_number Int      @unique
-  start_time    DateTime
-  end_time      DateTime
-  cooldown_end  DateTime
-  status        String   @default("active") // "active" | "cooldown" | "ended"
+  id              Int      @id @default(autoincrement())
+  season_number   Int      @unique
+  start_time      DateTime
+  end_time        DateTime
+  cooldown_end    DateTime
+  status          String   @default("active") // "active" | "cooldown" | "ended"
+  tokens_awarded  Boolean  @default(false)
 
   position_logs LeaderboardPositionLog[]
 }
