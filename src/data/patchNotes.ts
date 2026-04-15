@@ -5,7 +5,11 @@ export interface PatchNote {
   changes: string[]
 }
 
-export const CURRENT_PATCH_ID = 1
+export const CURRENT_PATCH_ID = 2
+
+// Patch id 2 awards +5,000 cash on dismiss — handled in POST /api/patch
+export const VISHU_BONUS_PATCH_ID = 2
+export const VISHU_BONUS_AMOUNT   = 5000
 
 export const PATCH_NOTES: PatchNote[] = [
   {
@@ -22,6 +26,16 @@ export const PATCH_NOTES: PatchNote[] = [
       '✅ Sell confirmation — a dialog now appears before selling to prevent accidents.',
       '🛡️ Auction win bug fixed — bids were silently refunded due to an overly strict variant cap. This is resolved.',
       '🚗 50 new cars added across all categories (common, sports, luxury, classic, hyper).',
+    ],
+  },
+  {
+    id: 2,
+    title: 'Happy Vishu! 🎉',
+    date: '2026-04-14',
+    changes: [
+      '🌸 Wishing you a prosperous Vishu from the CarAuction team!',
+      '💰 +$5,000 cash has been added to your balance as a Vishu gift.',
+      '🏎️ Use it to grab your next auction win. Good luck this season!',
     ],
   },
 ]
