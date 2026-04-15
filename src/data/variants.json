@@ -2,7 +2,7 @@
   "performance": {
     "label": "Performance",
     "income_multiplier": 1.35,
-    "decay_multiplier": 1.8,
+    "decay_multiplier": 2.5,
     "resale_bonus": -0.1,
     "spawn_weight": 0.3
   },
